@@ -3,6 +3,7 @@
 Input & Schema Setup
 
 - Define all input variables (theme, revenue size, kitchen size, retraining need, equipment condition). 
+
 --> /input_handler.py
   
 - Design database schema (tables for inputs, cost factors, outputs). 
