@@ -1,0 +1,33 @@
+# Track-A-FACE Dependencies
+# Financial Analysis Calculation Engine
+
+# Database
+sqlite3  # Built-in with Python 3.12
+
+# Data handling
+pandas>=2.0.0
+numpy>=1.24.0
+
+# PDF Export
+reportlab>=4.0.0
+
+# Excel integration
+openpyxl>=3.1.0
+xlsxwriter>=3.1.0
+
+# Logging and configuration
+pyyaml>=6.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Development tools
+black>=23.0.0
+flake8>=6.0.0
+
+# C# Integration (if needed)
+pythonnet>=3.0.0
+
+# GUI (backup option if needed)
+tkinter  # Built-in with Python 3.12
