@@ -1,7 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\Users\\hp\\OneDrive\\Documents\\GitHub\\Track-A-FACE\\FaceWebAPp\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{633F7AF3-A9EC-433D-834A-9359FACCD68B}|FaceWebAPp\\FaceWebAPp.csproj|c:\\users\\hp\\onedrive\\documents\\github\\track-a-face\\facewebapp\\facewebapp\\models\\restaurant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{633F7AF3-A9EC-433D-834A-9359FACCD68B}|FaceWebAPp\\FaceWebAPp.csproj|solutionrelative:facewebapp\\models\\restaurant.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -9,7 +14,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": -1,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Bookmark",
@@ -22,6 +27,19 @@
             {
               "$type": "Bookmark",
               "Name": "ST:1:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Restaurant.cs",
+              "DocumentMoniker": "C:\\Users\\hp\\OneDrive\\Documents\\GitHub\\Track-A-FACE\\FaceWebAPp\\FaceWebAPp\\Models\\Restaurant.cs",
+              "RelativeDocumentMoniker": "FaceWebAPp\\Models\\Restaurant.cs",
+              "ToolTip": "C:\\Users\\hp\\OneDrive\\Documents\\GitHub\\Track-A-FACE\\FaceWebAPp\\FaceWebAPp\\Models\\Restaurant.cs",
+              "RelativeToolTip": "FaceWebAPp\\Models\\Restaurant.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-04T22:12:33.185Z",
+              "EditorCaption": ""
             }
           ]
         }
