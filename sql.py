@@ -24,14 +24,14 @@ logger = logging.getLogger(__name__)
 class DatabaseManager:
     """Gestionnaire principal de la base de données SQLite"""
     
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: str = None):
         """
-        Initialise la connexion à la base de données
+        Initialise le gestionnaire de base de données
         
         Args:
             db_path: Chemin vers le fichier SQLite (optionnel)
         """
-        self.db_path = db_path or DATABASE_CONFIG["path"]
+        self.db_path = Path(db_path) if db_path else DATABASE_CONFIG["path"]
         self.connection = None
         self._ensure_data_directory()
     
@@ -347,57 +347,334 @@ class DatabaseInitializer:
         self.db_manager = DatabaseManager()
     
     def initialize_database(self):
-        """Initialise complètement la base de données"""
+        """Initialise la base de données avec le schéma et les données de base"""
         try:
-            # Connexion
             self.db_manager.connect()
             
-            # Création des tables et insertion des données de base
-            self.db_manager.create_tables()
+            # Créer les tables depuis le schéma
+            self._create_tables_from_schema()
             
-            logger.info("Base de données initialisée avec succès")
-            return True
+            # Insérer les facteurs de coût avancés
+            self._insert_advanced_cost_factors()
+            
+            # Insérer des données d'exemple
+            self._insert_sample_data()
+            
+            print("✅ Base de données initialisée avec succès")
             
         except Exception as e:
-            logger.error(f"Erreur lors de l'initialisation: {e}")
-            return False
+            print(f"❌ Erreur lors de l'initialisation: {e}")
+            raise
         finally:
             self.db_manager.disconnect()
     
-    def reset_database(self):
-        """Remet à zéro la base de données (ATTENTION: supprime toutes les données)"""
+    def _create_tables_from_schema(self):
+        """Crée les tables depuis le fichier de schéma"""
+        schema_path = "database_schema.sql"
         try:
-            if self.db_manager.db_path.exists():
-                self.db_manager.db_path.unlink()
-                logger.info("Base de données supprimée")
+            with open(schema_path, 'r', encoding='utf-8') as f:
+                schema_sql = f.read()
             
-            return self.initialize_database()
+            # Exécuter le script complet
+            self.db_manager.connection.executescript(schema_sql)
+            self.db_manager.connection.commit()
+            print("📋 Tables créées depuis le schéma")
             
-        except Exception as e:
-            logger.error(f"Erreur lors de la remise à zéro: {e}")
-            return False
-
-
-# Fonctions utilitaires
-def get_database_manager() -> DatabaseManager:
-    """Factory function pour obtenir un gestionnaire de DB"""
-    return DatabaseManager()
-
-def get_all_daos(db_manager: DatabaseManager) -> Dict[str, Any]:
-    """
-    Retourne tous les DAOs configurés
+        except FileNotFoundError:
+            print("⚠️ Fichier schema non trouvé, création manuelle des tables")
+            self._create_tables_manually()
     
-    Args:
-        db_manager: Gestionnaire de base de données
+    def _create_tables_manually(self):
+        """Crée les tables manuellement si le schéma n'est pas disponible"""
+        tables = [
+            """
+            CREATE TABLE IF NOT EXISTS inputs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_name VARCHAR(100) NOT NULL,
+                restaurant_theme VARCHAR(50) NOT NULL,
+                revenue_size VARCHAR(20) NOT NULL,
+                staff_count INTEGER NOT NULL,
+                training_hours_needed INTEGER,
+                daily_capacity INTEGER NOT NULL,
+                kitchen_size_sqm DECIMAL(8,2),
+                equipment_value DECIMAL(12,2),
+                equipment_condition VARCHAR(20),
+                equipment_age_years INTEGER,
+                location_rent_sqm DECIMAL(8,2),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS cost_factors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                factor_name VARCHAR(100) NOT NULL,
+                factor_category VARCHAR(50) NOT NULL,
+                restaurant_theme VARCHAR(50),
+                revenue_size VARCHAR(20),
+                multiplier DECIMAL(8,4) NOT NULL DEFAULT 1.0,
+                base_cost DECIMAL(10,2) DEFAULT 0,
+                description TEXT,
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS calculation_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                input_session_id INTEGER NOT NULL,
+                cost_category VARCHAR(50) NOT NULL,
+                cost_subcategory VARCHAR(50),
+                calculated_amount DECIMAL(12,2) NOT NULL,
+                formula_used TEXT,
+                calculation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (input_session_id) REFERENCES inputs(id) ON DELETE CASCADE
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS scenarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                comparison_name VARCHAR(100) NOT NULL,
+                scenario_name VARCHAR(100) NOT NULL,
+                input_session_id INTEGER NOT NULL,
+                total_cost DECIMAL(12,2),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (input_session_id) REFERENCES inputs(id) ON DELETE CASCADE
+            )
+            """
+        ]
         
-    Returns:
-        Dictionnaire avec tous les DAOs
-    """
+        for table_sql in tables:
+            self.db_manager.connection.execute(table_sql)
+        
+        self.db_manager.connection.commit()
+    
+    def _insert_advanced_cost_factors(self):
+        """Insère les facteurs de coût avancés pour les formules pondérées"""
+        
+        # Facteurs de formation
+        training_factors = [
+            ('training_rate_per_hour', 'training', 'fast_food', None, 1.0, 25.0, 'Taux horaire formation fast food'),
+            ('training_rate_per_hour', 'training', 'casual_dining', None, 1.0, 30.0, 'Taux horaire formation casual dining'),
+            ('training_rate_per_hour', 'training', 'fine_dining', None, 1.0, 45.0, 'Taux horaire formation fine dining'),
+            ('training_rate_per_hour', 'training', 'cloud_kitchen', None, 1.0, 28.0, 'Taux horaire formation cloud kitchen'),
+            ('training_rate_per_hour', 'training', 'food_truck', None, 1.0, 22.0, 'Taux horaire formation food truck'),
+            
+            ('training_complexity_factor', 'training', 'fast_food', None, 0.8, 0, 'Facteur complexité formation fast food'),
+            ('training_complexity_factor', 'training', 'casual_dining', None, 1.0, 0, 'Facteur complexité formation casual dining'),
+            ('training_complexity_factor', 'training', 'fine_dining', None, 1.6, 0, 'Facteur complexité formation fine dining'),
+            ('training_complexity_factor', 'training', 'cloud_kitchen', None, 0.9, 0, 'Facteur complexité formation cloud kitchen'),
+            ('training_complexity_factor', 'training', 'food_truck', None, 0.7, 0, 'Facteur complexité formation food truck'),
+            
+            ('training_size_factor', 'training', None, 'small', 1.1, 0, 'Facteur taille formation small'),
+            ('training_size_factor', 'training', None, 'medium', 1.0, 0, 'Facteur taille formation medium'),
+            ('training_size_factor', 'training', None, 'large', 0.9, 0, 'Facteur taille formation large'),
+            ('training_size_factor', 'training', None, 'enterprise', 0.8, 0, 'Facteur taille formation enterprise'),
+        ]
+        
+        # Facteurs salariaux
+        salary_factors = [
+            ('salary_theme_multiplier', 'salary', 'fast_food', None, 0.85, 0, 'Multiplicateur salarial fast food'),
+            ('salary_theme_multiplier', 'salary', 'casual_dining', None, 1.0, 0, 'Multiplicateur salarial casual dining'),
+            ('salary_theme_multiplier', 'salary', 'fine_dining', None, 1.45, 0, 'Multiplicateur salarial fine dining'),
+            ('salary_theme_multiplier', 'salary', 'cloud_kitchen', None, 0.95, 0, 'Multiplicateur salarial cloud kitchen'),
+            ('salary_theme_multiplier', 'salary', 'food_truck', None, 0.80, 0, 'Multiplicateur salarial food truck'),
+            
+            ('salary_revenue_multiplier', 'salary', None, 'small', 0.88, 0, 'Multiplicateur salarial small'),
+            ('salary_revenue_multiplier', 'salary', None, 'medium', 1.0, 0, 'Multiplicateur salarial medium'),
+            ('salary_revenue_multiplier', 'salary', None, 'large', 1.18, 0, 'Multiplicateur salarial large'),
+            ('salary_revenue_multiplier', 'salary', None, 'enterprise', 1.35, 0, 'Multiplicateur salarial enterprise'),
+        ]
+        
+        # Facteurs d'équipement
+        equipment_factors = [
+            ('depreciation_rate', 'equipment', 'fast_food', None, 0.22, 0, 'Taux dépréciation fast food'),
+            ('depreciation_rate', 'equipment', 'casual_dining', None, 0.20, 0, 'Taux dépréciation casual dining'),
+            ('depreciation_rate', 'equipment', 'fine_dining', None, 0.18, 0, 'Taux dépréciation fine dining'),
+            ('depreciation_rate', 'equipment', 'cloud_kitchen', None, 0.25, 0, 'Taux dépréciation cloud kitchen'),
+            ('depreciation_rate', 'equipment', 'food_truck', None, 0.28, 0, 'Taux dépréciation food truck'),
+            
+            ('equipment_theme_factor', 'equipment', 'fast_food', None, 1.3, 0, 'Facteur usure équipement fast food'),
+            ('equipment_theme_factor', 'equipment', 'casual_dining', None, 1.0, 0, 'Facteur usure équipement casual dining'),
+            ('equipment_theme_factor', 'equipment', 'fine_dining', None, 0.8, 0, 'Facteur usure équipement fine dining'),
+            ('equipment_theme_factor', 'equipment', 'cloud_kitchen', None, 1.2, 0, 'Facteur usure équipement cloud kitchen'),
+            ('equipment_theme_factor', 'equipment', 'food_truck', None, 1.4, 0, 'Facteur usure équipement food truck'),
+            
+            ('maintenance_rate', 'equipment', 'fast_food', None, 0.09, 0, 'Taux maintenance fast food'),
+            ('maintenance_rate', 'equipment', 'casual_dining', None, 0.08, 0, 'Taux maintenance casual dining'),
+            ('maintenance_rate', 'equipment', 'fine_dining', None, 0.07, 0, 'Taux maintenance fine dining'),
+            ('maintenance_rate', 'equipment', 'cloud_kitchen', None, 0.10, 0, 'Taux maintenance cloud kitchen'),
+            ('maintenance_rate', 'equipment', 'food_truck', None, 0.12, 0, 'Taux maintenance food truck'),
+            
+            ('maintenance_complexity_factor', 'equipment', 'fast_food', None, 0.9, 0, 'Complexité maintenance fast food'),
+            ('maintenance_complexity_factor', 'equipment', 'casual_dining', None, 1.0, 0, 'Complexité maintenance casual dining'),
+            ('maintenance_complexity_factor', 'equipment', 'fine_dining', None, 1.3, 0, 'Complexité maintenance fine dining'),
+            ('maintenance_complexity_factor', 'equipment', 'cloud_kitchen', None, 1.1, 0, 'Complexité maintenance cloud kitchen'),
+            ('maintenance_complexity_factor', 'equipment', 'food_truck', None, 1.2, 0, 'Complexité maintenance food truck'),
+        ]
+        
+        # Facteurs opérationnels
+        operational_factors = [
+            ('food_cost_per_cover', 'operations', 'fast_food', None, 1.0, 3.2, 'Coût alimentaire par couvert fast food'),
+            ('food_cost_per_cover', 'operations', 'casual_dining', None, 1.0, 7.5, 'Coût alimentaire par couvert casual dining'),
+            ('food_cost_per_cover', 'operations', 'fine_dining', None, 1.0, 22.0, 'Coût alimentaire par couvert fine dining'),
+            ('food_cost_per_cover', 'operations', 'cloud_kitchen', None, 1.0, 4.8, 'Coût alimentaire par couvert cloud kitchen'),
+            ('food_cost_per_cover', 'operations', 'food_truck', None, 1.0, 3.8, 'Coût alimentaire par couvert food truck'),
+            
+            ('food_efficiency_factor', 'operations', None, 'small', 1.05, 0, 'Efficacité alimentaire small'),
+            ('food_efficiency_factor', 'operations', None, 'medium', 1.0, 0, 'Efficacité alimentaire medium'),
+            ('food_efficiency_factor', 'operations', None, 'large', 0.92, 0, 'Efficacité alimentaire large'),
+            ('food_efficiency_factor', 'operations', None, 'enterprise', 0.85, 0, 'Efficacité alimentaire enterprise'),
+            
+            ('marketing_budget_base', 'operations', None, 'small', 1.0, 12000, 'Budget marketing base small'),
+            ('marketing_budget_base', 'operations', None, 'medium', 1.0, 32000, 'Budget marketing base medium'),
+            ('marketing_budget_base', 'operations', None, 'large', 1.0, 72000, 'Budget marketing base large'),
+            ('marketing_budget_base', 'operations', None, 'enterprise', 1.0, 145000, 'Budget marketing base enterprise'),
+            
+            ('marketing_theme_factor', 'operations', 'fast_food', None, 1.25, 0, 'Facteur marketing fast food'),
+            ('marketing_theme_factor', 'operations', 'casual_dining', None, 1.0, 0, 'Facteur marketing casual dining'),
+            ('marketing_theme_factor', 'operations', 'fine_dining', None, 0.75, 0, 'Facteur marketing fine dining'),
+            ('marketing_theme_factor', 'operations', 'cloud_kitchen', None, 1.6, 0, 'Facteur marketing cloud kitchen'),
+            ('marketing_theme_factor', 'operations', 'food_truck', None, 0.55, 0, 'Facteur marketing food truck'),
+            
+            ('seasonal_price_factor', 'operations', None, None, 1.05, 0, 'Facteur variations saisonnières prix'),
+        ]
+        
+        # Facteurs immobiliers
+        location_factors = [
+            ('rent_factor', 'location', 'fast_food', None, 1.1, 0, 'Facteur loyer fast food'),
+            ('rent_factor', 'location', 'casual_dining', None, 1.0, 0, 'Facteur loyer casual dining'),
+            ('rent_factor', 'location', 'fine_dining', None, 1.3, 0, 'Facteur loyer fine dining'),
+            ('rent_factor', 'location', 'cloud_kitchen', None, 0.8, 0, 'Facteur loyer cloud kitchen'),
+            ('rent_factor', 'location', 'food_truck', None, 0.0, 0, 'Facteur loyer food truck'),
+        ]
+        
+        # Combiner tous les facteurs
+        all_factors = training_factors + salary_factors + equipment_factors + operational_factors + location_factors
+        
+        # Insérer les facteurs
+        insert_query = """
+        INSERT OR REPLACE INTO cost_factors 
+        (factor_name, factor_category, restaurant_theme, revenue_size, multiplier, base_cost, description)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """
+        
+        for factor in all_factors:
+            self.db_manager.connection.execute(insert_query, factor)
+        
+        self.db_manager.connection.commit()
+        print(f"📊 {len(all_factors)} facteurs de coût avancés insérés")
+    
+    def _insert_sample_data(self):
+        """Insère des données d'exemple pour les tests"""
+        sample_inputs = [
+            ('Restaurant Test 1', 'casual_dining', 'medium', 8, 40, 120, 85.0, 150000, 'good', 3, 45.0),
+            ('Fast Food Test', 'fast_food', 'small', 5, 20, 200, 60.0, 80000, 'fair', 2, 35.0),
+            ('Fine Dining Test', 'fine_dining', 'large', 15, 80, 80, 120.0, 300000, 'excellent', 1, 85.0),
+        ]
+        
+        insert_query = """
+        INSERT OR REPLACE INTO inputs 
+        (session_name, restaurant_theme, revenue_size, staff_count, training_hours_needed, 
+         daily_capacity, kitchen_size_sqm, equipment_value, equipment_condition, 
+         equipment_age_years, location_rent_sqm)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        
+        for sample in sample_inputs:
+            self.db_manager.connection.execute(insert_query, sample)
+        
+        self.db_manager.connection.commit()
+        print(f"🧪 {len(sample_inputs)} sessions d'exemple insérées")
+
+
+# Classe pour la gestion avancée des facteurs de coût
+class AdvancedCostFactorsManager:
+    """Gestionnaire avancé pour les facteurs de coût avec cache et optimisations"""
+    
+    def __init__(self, db_manager: DatabaseManager):
+        self.db_manager = db_manager
+        self.dao = CostFactorsDAO(db_manager)
+        self._cache = {}  # Cache pour les facteurs fréquemment utilisés
+        self._cache_timeout = 300  # 5 minutes
+        self._last_cache_update = 0
+    
+    def get_factor_with_fallback(self, factor_name: str, theme: str = None, 
+                                revenue_size: str = None, default_value: float = 1.0) -> float:
+        """Récupère un facteur avec système de fallback intelligent"""
+        import time
+        
+        # Vérifier le cache
+        cache_key = f"{factor_name}_{theme}_{revenue_size}"
+        current_time = time.time()
+        
+        if (cache_key in self._cache and 
+            current_time - self._last_cache_update < self._cache_timeout):
+            return self._cache[cache_key]
+        
+        # Essayer de récupérer le facteur spécifique
+        value = self.dao.get_factor_value(factor_name, theme, revenue_size)
+        
+        if value is not None:
+            self._cache[cache_key] = value
+            return value
+        
+        # Fallback 1: Essayer sans le revenue_size
+        if revenue_size:
+            value = self.dao.get_factor_value(factor_name, theme, None)
+            if value is not None:
+                self._cache[cache_key] = value
+                return value
+        
+        # Fallback 2: Essayer sans le theme
+        if theme:
+            value = self.dao.get_factor_value(factor_name, None, revenue_size)
+            if value is not None:
+                self._cache[cache_key] = value
+                return value
+        
+        # Fallback 3: Facteur générique
+        value = self.dao.get_factor_value(factor_name, None, None)
+        if value is not None:
+            self._cache[cache_key] = value
+            return value
+        
+        # Fallback final: valeur par défaut
+        self._cache[cache_key] = default_value
+        return default_value
+    
+    def get_all_factors_for_calculation(self, theme: str, revenue_size: str) -> Dict[str, float]:
+        """Récupère tous les facteurs nécessaires pour un calcul en une seule fois"""
+        factors = {}
+        
+        # Liste des facteurs essentiels
+        essential_factors = [
+            'training_rate_per_hour', 'training_complexity_factor', 'training_size_factor',
+            'salary_theme_multiplier', 'salary_revenue_multiplier',
+            'depreciation_rate', 'equipment_theme_factor', 'maintenance_rate', 'maintenance_complexity_factor',
+            'food_cost_per_cover', 'food_efficiency_factor', 'marketing_budget_base', 'marketing_theme_factor',
+            'rent_factor', 'seasonal_price_factor'
+        ]
+        
+        for factor_name in essential_factors:
+            factors[factor_name] = self.get_factor_with_fallback(factor_name, theme, revenue_size)
+        
+        return factors
+    
+    def clear_cache(self):
+        """Vide le cache des facteurs"""
+        self._cache.clear()
+        self._last_cache_update = 0
+
+
+# Fonction utilitaire pour obtenir tous les DAOs
+def get_all_daos(db_manager: DatabaseManager) -> Dict[str, Any]:
+    """Retourne un dictionnaire de tous les DAOs disponibles"""
     return {
         'inputs': InputsDAO(db_manager),
         'cost_factors': CostFactorsDAO(db_manager),
         'results': CalculationResultsDAO(db_manager),
-        'scenarios': ScenariosDAO(db_manager)
+        'scenarios': ScenariosDAO(db_manager),
+        'advanced_factors': AdvancedCostFactorsManager(db_manager)
     }
 
 
