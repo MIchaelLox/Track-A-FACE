@@ -359,28 +359,53 @@ namespace FaceWebAppUI
             txtSessionName.Text = "Nouveau Restaurant";
             cmbTheme.SelectedIndex = 1; // casual_dining
             cmbRevenueSize.SelectedIndex = 1; // medium
-            numKitchenSize.Value = 100;
-            numKitchenSize.Minimum = 10;
-            numKitchenSize.Maximum = 1000;
-            numWorkstations.Value = 8;
-            numWorkstations.Minimum = 1;
-            numWorkstations.Maximum = 50;
-            numCapacity.Value = 200;
-            numCapacity.Minimum = 10;
-            numCapacity.Maximum = 2000;
-            numStaffCount.Value = 15;
-            numStaffCount.Minimum = 1;
-            numStaffCount.Maximum = 200;
+            
+            // Configuration des contrôles numériques avec validation
+            SetupNumericControl(numKitchenSize, 100, 10, 1000, 1);
+            SetupNumericControl(numWorkstations, 8, 1, 50, 1);
+            SetupNumericControl(numCapacity, 200, 10, 2000, 10);
+            SetupNumericControl(numStaffCount, 15, 1, 200, 1);
+            SetupNumericControl(numTrainingHours, 40, 0, 500, 5);
+            SetupNumericControl(numEquipmentAge, 2, 0, 30, 1);
+            SetupNumericControl(numEquipmentValue, 120000, 1000, 1000000, 1000);
+            SetupNumericControl(numRentPerSqm, 40, 5, 200, 0.5m);
+            
             cmbExperience.SelectedIndex = 1; // intermediate
-            numTrainingHours.Value = 40;
-            numTrainingHours.Maximum = 500;
-            numEquipmentAge.Value = 2;
-            numEquipmentAge.Maximum = 30;
             cmbEquipmentCondition.SelectedIndex = 1; // good
-            numEquipmentValue.Value = 120000;
-            numEquipmentValue.Maximum = 1000000;
-            numRentPerSqm.Value = 40;
-            numRentPerSqm.Maximum = 200;
+            
+            // Ajouter des événements de validation
+            AttachValidationEvents();
+        }
+
+        private void SetupNumericControl(NumericUpDown control, decimal defaultValue, decimal minimum, decimal maximum, decimal increment)
+        {
+            control.Value = defaultValue;
+            control.Minimum = minimum;
+            control.Maximum = maximum;
+            control.Increment = increment;
+            control.DecimalPlaces = increment < 1 ? 1 : 0;
+            
+            // Ajouter tooltip avec les limites
+            var tooltip = new ToolTip();
+            tooltip.SetToolTip(control, $"Valeur entre {minimum} et {maximum}");
+        }
+
+        private void AttachValidationEvents()
+        {
+            // Validation en temps réel pour les champs critiques
+            txtSessionName.TextChanged += ValidateSessionName;
+            numKitchenSize.ValueChanged += ValidateKitchenSize;
+            numWorkstations.ValueChanged += ValidateWorkstations;
+            numCapacity.ValueChanged += ValidateCapacity;
+            numStaffCount.ValueChanged += ValidateStaffCount;
+            numEquipmentValue.ValueChanged += ValidateEquipmentValue;
+            numRentPerSqm.ValueChanged += ValidateRentPerSqm;
+            
+            // Validation des ComboBox
+            cmbTheme.SelectedIndexChanged += ValidateComboBoxSelection;
+            cmbRevenueSize.SelectedIndexChanged += ValidateComboBoxSelection;
+            cmbExperience.SelectedIndexChanged += ValidateComboBoxSelection;
+            cmbEquipmentCondition.SelectedIndexChanged += ValidateComboBoxSelection;
         }
 
         private async void BtnCalculate_Click(object sender, EventArgs e)
@@ -421,9 +446,15 @@ namespace FaceWebAppUI
 
         private Dictionary<string, object> CollectInputData()
         {
+            // Valider avant de collecter
+            if (!ValidateAllInputs())
+            {
+                throw new InvalidOperationException("Données d'entrée invalides. Veuillez corriger les erreurs.");
+            }
+
             return new Dictionary<string, object>
             {
-                ["session_name"] = txtSessionName.Text,
+                ["session_name"] = txtSessionName.Text.Trim(),
                 ["restaurant_theme"] = cmbTheme.SelectedItem?.ToString() ?? "casual_dining",
                 ["revenue_size"] = cmbRevenueSize.SelectedItem?.ToString() ?? "medium",
                 ["kitchen_size_sqm"] = (double)numKitchenSize.Value,
@@ -685,6 +716,244 @@ namespace FaceWebAppUI
                 statusLabel.Text = "Erreur lors des tests";
             }
         }
+
+        #region Validation Methods
+
+        private void ValidateSessionName(object sender, EventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (string.IsNullOrWhiteSpace(textBox.Text))
+            {
+                textBox.BackColor = Color.LightPink;
+                statusLabel.Text = "Le nom de session est requis";
+            }
+            else if (textBox.Text.Length < 3)
+            {
+                textBox.BackColor = Color.LightYellow;
+                statusLabel.Text = "Le nom de session doit contenir au moins 3 caractères";
+            }
+            else
+            {
+                textBox.BackColor = Color.White;
+                statusLabel.Text = "Prêt";
+            }
+        }
+
+        private void ValidateKitchenSize(object sender, EventArgs e)
+        {
+            var numericUpDown = sender as NumericUpDown;
+            if (numericUpDown.Value < 20)
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Cuisine très petite (< 20m²)";
+            }
+            else if (numericUpDown.Value > 500)
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Cuisine très grande (> 500m²)";
+            }
+            else
+            {
+                numericUpDown.BackColor = Color.White;
+                statusLabel.Text = "Prêt";
+            }
+        }
+
+        private void ValidateWorkstations(object sender, EventArgs e)
+        {
+            var numericUpDown = sender as NumericUpDown;
+            var kitchenSize = (double)numKitchenSize.Value;
+            var workstationsPerSqm = (double)numericUpDown.Value / kitchenSize;
+            
+            if (workstationsPerSqm > 0.2) // Plus de 1 poste par 5m²
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Beaucoup de postes pour la taille de cuisine";
+            }
+            else if (workstationsPerSqm < 0.05) // Moins de 1 poste par 20m²
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Peu de postes pour la taille de cuisine";
+            }
+            else
+            {
+                numericUpDown.BackColor = Color.White;
+                statusLabel.Text = "Prêt";
+            }
+        }
+
+        private void ValidateCapacity(object sender, EventArgs e)
+        {
+            var numericUpDown = sender as NumericUpDown;
+            var staffCount = (int)numStaffCount.Value;
+            var capacityPerStaff = (double)numericUpDown.Value / staffCount;
+            
+            if (capacityPerStaff > 50)
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Capacité élevée par employé (> 50 clients/employé)";
+            }
+            else if (capacityPerStaff < 5)
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Capacité faible par employé (< 5 clients/employé)";
+            }
+            else
+            {
+                numericUpDown.BackColor = Color.White;
+                statusLabel.Text = "Prêt";
+            }
+        }
+
+        private void ValidateStaffCount(object sender, EventArgs e)
+        {
+            var numericUpDown = sender as NumericUpDown;
+            var kitchenSize = (double)numKitchenSize.Value;
+            var staffPerSqm = (double)numericUpDown.Value / kitchenSize;
+            
+            if (staffPerSqm > 0.5) // Plus de 1 employé par 2m²
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Beaucoup d'employés pour la taille de cuisine";
+            }
+            else if (staffPerSqm < 0.05) // Moins de 1 employé par 20m²
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Peu d'employés pour la taille de cuisine";
+            }
+            else
+            {
+                numericUpDown.BackColor = Color.White;
+                statusLabel.Text = "Prêt";
+            }
+        }
+
+        private void ValidateEquipmentValue(object sender, EventArgs e)
+        {
+            var numericUpDown = sender as NumericUpDown;
+            var kitchenSize = (double)numKitchenSize.Value;
+            var valuePerSqm = (double)numericUpDown.Value / kitchenSize;
+            
+            if (valuePerSqm > 5000) // Plus de 5000$ par m²
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Équipement très coûteux (> 5000$/m²)";
+            }
+            else if (valuePerSqm < 500) // Moins de 500$ par m²
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Équipement peu coûteux (< 500$/m²)";
+            }
+            else
+            {
+                numericUpDown.BackColor = Color.White;
+                statusLabel.Text = "Prêt";
+            }
+        }
+
+        private void ValidateRentPerSqm(object sender, EventArgs e)
+        {
+            var numericUpDown = sender as NumericUpDown;
+            
+            if (numericUpDown.Value > 100)
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Loyer très élevé (> 100$/m²)";
+            }
+            else if (numericUpDown.Value < 10)
+            {
+                numericUpDown.BackColor = Color.LightYellow;
+                statusLabel.Text = "Attention: Loyer très bas (< 10$/m²)";
+            }
+            else
+            {
+                numericUpDown.BackColor = Color.White;
+                statusLabel.Text = "Prêt";
+            }
+        }
+
+        private void ValidateComboBoxSelection(object sender, EventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox.SelectedIndex == -1)
+            {
+                comboBox.BackColor = Color.LightPink;
+                statusLabel.Text = "Veuillez sélectionner une option";
+            }
+            else
+            {
+                comboBox.BackColor = Color.White;
+                statusLabel.Text = "Prêt";
+            }
+        }
+
+        private bool ValidateAllInputs()
+        {
+            var isValid = true;
+            var errors = new List<string>();
+
+            // Validation du nom de session
+            if (string.IsNullOrWhiteSpace(txtSessionName.Text))
+            {
+                errors.Add("Le nom de session est requis");
+                isValid = false;
+            }
+            else if (txtSessionName.Text.Length < 3)
+            {
+                errors.Add("Le nom de session doit contenir au moins 3 caractères");
+                isValid = false;
+            }
+
+            // Validation des ComboBox
+            if (cmbTheme.SelectedIndex == -1)
+            {
+                errors.Add("Veuillez sélectionner un thème de restaurant");
+                isValid = false;
+            }
+
+            if (cmbRevenueSize.SelectedIndex == -1)
+            {
+                errors.Add("Veuillez sélectionner une taille de revenus");
+                isValid = false;
+            }
+
+            if (cmbExperience.SelectedIndex == -1)
+            {
+                errors.Add("Veuillez sélectionner un niveau d'expérience");
+                isValid = false;
+            }
+
+            if (cmbEquipmentCondition.SelectedIndex == -1)
+            {
+                errors.Add("Veuillez sélectionner l'état de l'équipement");
+                isValid = false;
+            }
+
+            // Validation des règles métier
+            var workstationsPerSqm = (double)numWorkstations.Value / (double)numKitchenSize.Value;
+            if (workstationsPerSqm > 0.3)
+            {
+                errors.Add("Trop de postes de travail pour la taille de cuisine");
+                isValid = false;
+            }
+
+            var capacityPerStaff = (double)numCapacity.Value / (double)numStaffCount.Value;
+            if (capacityPerStaff > 100)
+            {
+                errors.Add("Capacité trop élevée par rapport au nombre d'employés");
+                isValid = false;
+            }
+
+            if (!isValid)
+            {
+                var errorMessage = "Erreurs de validation:\n" + string.Join("\n", errors);
+                MessageBox.Show(errorMessage, "Validation des données", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
+            return isValid;
+        }
+
+        #endregion
 
         /// <summary>
         /// Ajoute un menu pour les tests (pour le développement)
