@@ -18,8 +18,14 @@ namespace FaceWebAppUI
 
         public PythonBridge(string projectRoot)
         {
-            _projectRoot = projectRoot;
-            _pythonScriptPath = Path.Combine(projectRoot, "engine.py");
+            _projectRoot = projectRoot ?? throw new ArgumentNullException(nameof(projectRoot));
+            _pythonScriptPath = Path.Combine(projectRoot, "engine_api.py");
+            
+            // Valider le chemin du projet
+            if (!Directory.Exists(_projectRoot))
+            {
+                throw new DirectoryNotFoundException($"Répertoire projet non trouvé: {_projectRoot}");
+            }
         }
 
         /// <summary>
@@ -47,7 +53,9 @@ namespace FaceWebAppUI
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         UseShellExecute = false,
-                        CreateNoWindow = true
+                        CreateNoWindow = true,
+                        StandardOutputEncoding = System.Text.Encoding.UTF8,
+                        StandardErrorEncoding = System.Text.Encoding.UTF8
                     };
 
                     using var process = Process.Start(startInfo);
@@ -67,7 +75,8 @@ namespace FaceWebAppUI
 
                     if (process.ExitCode != 0)
                     {
-                        throw new Exception($"Erreur Python (Code {process.ExitCode}): {error}");
+                        var errorDetails = ParsePythonError(error, output);
+                        throw new PythonExecutionException($"Erreur Python (Code {process.ExitCode})", process.ExitCode, errorDetails, error);
                     }
 
                     // Lire le résultat depuis le fichier de sortie ou stdout
@@ -87,9 +96,24 @@ namespace FaceWebAppUI
                         throw new Exception("Aucun résultat retourné par Python");
                     }
 
+                    // Vérifier si c'est une erreur JSON
+                    if (resultJson.TrimStart().StartsWith("{") && resultJson.Contains("\"error\""))
+                    {
+                        var errorResult = JsonConvert.DeserializeObject<PythonErrorResponse>(resultJson);
+                        throw new PythonCalculationException(errorResult.Message, errorResult.Error, errorResult.Details);
+                    }
+                    
                     // Désérialiser le résultat
                     var result = JsonConvert.DeserializeObject<CalculationResult>(resultJson);
-                    return result ?? throw new Exception("Résultat de calcul invalide");
+                    if (result == null)
+                    {
+                        throw new Exception("Résultat de calcul invalide - désérialisation échouée");
+                    }
+                    
+                    // Valider la cohérence des résultats
+                    ValidateCalculationResult(result);
+                    
+                    return result;
                 }
                 catch (Exception ex)
                 {
@@ -253,6 +277,154 @@ namespace FaceWebAppUI
 
             return info;
         }
+        
+        /// <summary>
+        /// Parse les erreurs Python pour extraire des informations utiles
+        /// </summary>
+        private PythonErrorDetails ParsePythonError(string error, string output)
+        {
+            var details = new PythonErrorDetails
+            {
+                RawError = error,
+                RawOutput = output,
+                ErrorType = "UnknownError",
+                UserFriendlyMessage = "Une erreur s'est produite lors du calcul"
+            };
+            
+            // Parser les erreurs communes
+            if (error.Contains("ModuleNotFoundError"))
+            {
+                details.ErrorType = "ModuleNotFound";
+                details.UserFriendlyMessage = "Module Python manquant. Vérifiez l'installation des dépendances.";
+            }
+            else if (error.Contains("ValidationError"))
+            {
+                details.ErrorType = "ValidationError";
+                details.UserFriendlyMessage = "Données d'entrée invalides. Vérifiez vos paramètres.";
+            }
+            else if (error.Contains("FileNotFoundError"))
+            {
+                details.ErrorType = "FileNotFound";
+                details.UserFriendlyMessage = "Fichier requis manquant. Vérifiez l'installation.";
+            }
+            else if (error.Contains("sqlite3.OperationalError"))
+            {
+                details.ErrorType = "DatabaseError";
+                details.UserFriendlyMessage = "Erreur de base de données. La base peut être corrompue.";
+            }
+            
+            return details;
+        }
+        
+        /// <summary>
+        /// Valide la cohérence d'un résultat de calcul
+        /// </summary>
+        private void ValidateCalculationResult(CalculationResult result)
+        {
+            if (result.TotalCost < 0)
+            {
+                throw new InvalidOperationException("Le coût total ne peut pas être négatif");
+            }
+            
+            var calculatedTotal = result.StaffCosts + result.EquipmentCosts + 
+                                result.LocationCosts + result.OperationalCosts;
+            
+            // Tolérance de 1% pour les erreurs d'arrondi
+            var tolerance = Math.Max(1.0, calculatedTotal * 0.01);
+            if (Math.Abs(result.TotalCost - calculatedTotal) > tolerance)
+            {
+                throw new InvalidOperationException(
+                    $"Incohérence dans les totaux: {result.TotalCost:F2} vs {calculatedTotal:F2}");
+            }
+        }
+        
+        /// <summary>
+        /// Exécute un calcul avec retry automatique en cas d'échec temporaire
+        /// </summary>
+        public async Task<CalculationResult> ExecuteCalculationWithRetryAsync(Dictionary<string, object> inputData, int maxRetries = 3)
+        {
+            Exception lastException = null;
+            
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    return await ExecuteCalculationAsync(inputData);
+                }
+                catch (PythonExecutionException ex) when (ex.ExitCode == -1 && attempt < maxRetries)
+                {
+                    // Retry pour les erreurs temporaires
+                    lastException = ex;
+                    await Task.Delay(1000 * attempt); // Délai progressif
+                }
+                catch (Exception ex)
+                {
+                    // Ne pas retry pour les autres erreurs
+                    throw;
+                }
+            }
+            
+            throw lastException ?? new Exception("Échec après plusieurs tentatives");
+        }
+    }
+    
+    /// <summary>
+    /// Exception spécialisée pour les erreurs d'exécution Python
+    /// </summary>
+    public class PythonExecutionException : Exception
+    {
+        public int ExitCode { get; }
+        public PythonErrorDetails ErrorDetails { get; }
+        public string RawError { get; }
+        
+        public PythonExecutionException(string message, int exitCode, PythonErrorDetails errorDetails, string rawError) 
+            : base(message)
+        {
+            ExitCode = exitCode;
+            ErrorDetails = errorDetails;
+            RawError = rawError;
+        }
+    }
+    
+    /// <summary>
+    /// Exception pour les erreurs de calcul Python
+    /// </summary>
+    public class PythonCalculationException : Exception
+    {
+        public string ErrorType { get; }
+        public string Details { get; }
+        
+        public PythonCalculationException(string message, string errorType, string details) : base(message)
+        {
+            ErrorType = errorType;
+            Details = details;
+        }
+    }
+    
+    /// <summary>
+    /// Détails d'une erreur Python
+    /// </summary>
+    public class PythonErrorDetails
+    {
+        public string ErrorType { get; set; } = string.Empty;
+        public string UserFriendlyMessage { get; set; } = string.Empty;
+        public string RawError { get; set; } = string.Empty;
+        public string RawOutput { get; set; } = string.Empty;
+    }
+    
+    /// <summary>
+    /// Réponse d'erreur du Python
+    /// </summary>
+    public class PythonErrorResponse
+    {
+        [JsonProperty("error")]
+        public string Error { get; set; } = string.Empty;
+        
+        [JsonProperty("message")]
+        public string Message { get; set; } = string.Empty;
+        
+        [JsonProperty("details")]
+        public string Details { get; set; } = string.Empty;
     }
 
     /// <summary>

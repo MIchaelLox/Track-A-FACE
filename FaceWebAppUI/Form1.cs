@@ -64,48 +64,80 @@ namespace FaceWebAppUI
 
         private async Task<dynamic> ExecutePythonCalculation(Dictionary<string, object> inputData)
         {
-            return await Task.Run(() =>
+            try
             {
-                try
+                var bridge = new PythonBridge(_projectRoot);
+                
+                // Diagnostic de l'environnement
+                var diagnosticInfo = bridge.GetDiagnosticInfo();
+                LogDiagnosticInfo(diagnosticInfo);
+                
+                // Vérifier l'environnement Python
+                if (!bridge.ValidateEnvironment(out string errorMessage))
                 {
-                    var bridge = new PythonBridge(_projectRoot);
-                    
-                    // Vérifier l'environnement Python
-                    if (!bridge.ValidateEnvironment(out string errorMessage))
-                    {
-                        throw new Exception($"Environnement Python invalide: {errorMessage}");
-                    }
-
-                    // Exécuter le calcul via le bridge
-                    var result = bridge.ExecuteCalculationAsync(inputData).Result;
-                    
-                    if (result == null)
-                    {
-                        throw new Exception("Aucun résultat retourné par le moteur de calcul");
-                    }
-
-                    // Convertir en format compatible avec l'affichage existant
-                    return new
-                    {
-                        total_cost = result.TotalCost,
-                        staff_costs = result.StaffCosts,
-                        equipment_costs = result.EquipmentCosts,
-                        location_costs = result.LocationCosts,
-                        operational_costs = result.OperationalCosts,
-                        cost_breakdowns = result.CostBreakdowns.Select(cb => new
-                        {
-                            category = cb.Category,
-                            subcategory = cb.Subcategory,
-                            amount = cb.Amount,
-                            formula = cb.Formula
-                        }).ToArray()
-                    };
+                    ShowUserFriendlyError("Environnement Python", 
+                        "Python n'est pas correctement configuré", 
+                        errorMessage,
+                        "Vérifiez que Python est installé et accessible depuis le PATH");
+                    return null;
                 }
-                catch (Exception ex)
+
+                // Exécuter le calcul avec retry automatique
+                var result = await bridge.ExecuteCalculationWithRetryAsync(inputData, 3);
+                
+                if (result == null)
                 {
-                    throw new Exception($"Erreur d'exécution Python: {ex.Message}");
+                    ShowUserFriendlyError("Calcul", 
+                        "Aucun résultat retourné", 
+                        "Le moteur de calcul n'a pas produit de résultat",
+                        "Vérifiez les données d'entrée et réessayez");
+                    return null;
                 }
-            });
+
+                // Convertir en format compatible avec l'affichage existant
+                return new
+                {
+                    total_cost = result.TotalCost,
+                    staff_costs = result.StaffCosts,
+                    equipment_costs = result.EquipmentCosts,
+                    location_costs = result.LocationCosts,
+                    operational_costs = result.OperationalCosts,
+                    cost_breakdowns = result.CostBreakdowns.Select(cb => new
+                    {
+                        category = cb.Category,
+                        subcategory = cb.Subcategory,
+                        amount = cb.Amount,
+                        formula = cb.Formula
+                    }).ToArray()
+                };
+            }
+            catch (PythonExecutionException ex)
+            {
+                ShowUserFriendlyError("Exécution Python", 
+                    ex.ErrorDetails.UserFriendlyMessage,
+                    ex.Message,
+                    "Consultez les logs pour plus de détails");
+                LogError(ex);
+                return null;
+            }
+            catch (PythonCalculationException ex)
+            {
+                ShowUserFriendlyError("Calcul", 
+                    "Erreur dans les calculs",
+                    ex.Message,
+                    ex.Details);
+                LogError(ex);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                ShowUserFriendlyError("Système", 
+                    "Erreur inattendue",
+                    ex.Message,
+                    "Contactez le support technique");
+                LogError(ex);
+                return null;
+            }
         }
 
         private void DisplayResults(dynamic result)
@@ -153,6 +185,73 @@ namespace FaceWebAppUI
                 }
             };
             timer.Start();
+        }
+
+        private async void BtnCalculate_Click(object sender, EventArgs e)
+        {
+            // Validation préalable
+            if (!ValidateAllInputs())
+            {
+                ShowValidationErrorSummary();
+                return;
+            }
+
+            // Interface utilisateur - début du calcul
+            SetCalculationInProgress(true);
+            
+            try
+            {
+                var inputData = CollectInputData();
+                
+                // Pré-validation des données
+                if (!ValidateInputDataIntegrity(inputData))
+                {
+                    ShowUserFriendlyError("Validation", 
+                        "Données incohérentes détectées",
+                        "Certaines valeurs ne sont pas compatibles entre elles",
+                        "Vérifiez la cohérence de vos paramètres");
+                    return;
+                }
+                
+                statusLabel.Text = "Connexion au moteur de calcul...";
+                var result = await ExecutePythonCalculation(inputData);
+                
+                if (result != null)
+                {
+                    statusLabel.Text = "Traitement des résultats...";
+                    DisplayResults(result);
+                    tabControl.SelectedTab = tabResults;
+                    
+                    // Animation de succès
+                    await ShowSuccessAnimation();
+                    statusLabel.Text = $"✅ Calcul terminé - Total: {result.total_cost:N2} CAD$";
+                }
+                else
+                {
+                    statusLabel.Text = "❌ Échec du calcul";
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                ShowUserFriendlyError("Validation", 
+                    "Données d'entrée invalides",
+                    ex.Message,
+                    "Corrigez les erreurs et réessayez");
+                statusLabel.Text = "❌ Données invalides";
+            }
+            catch (Exception ex)
+            {
+                ShowUserFriendlyError("Système", 
+                    "Erreur inattendue",
+                    ex.Message,
+                    "Réessayez ou contactez le support");
+                statusLabel.Text = "❌ Erreur système";
+                LogError(ex);
+            }
+            finally
+            {
+                SetCalculationInProgress(false);
+            }
         }
 
         private void BtnReset_Click(object sender, EventArgs e)
@@ -276,24 +375,53 @@ namespace FaceWebAppUI
         }
 
         /// <summary>
-        /// Exécute les tests d'intégration
+        /// Exécute les tests d'intégration complets
         /// </summary>
         private async void RunIntegrationTests()
         {
-            var testRunner = new TestRunner(this);
-            statusLabel.Text = "Exécution des tests d'intégration...";
+            var integrationTestRunner = new IntegrationTestRunner(this);
+            statusLabel.Text = "🔄 Exécution des tests d'intégration...";
+            
+            // Désactiver l'interface pendant les tests
+            SetCalculationInProgress(true);
             
             try
             {
-                await testRunner.RunAllTestsAsync();
-                testRunner.ShowTestResults();
-                statusLabel.Text = "Tests d'intégration terminés";
+                var results = await integrationTestRunner.RunAllIntegrationTestsAsync();
+                integrationTestRunner.ShowTestResults();
+                
+                // Compter les succès et échecs
+                int passed = 0, failed = 0;
+                foreach (var result in results)
+                {
+                    if (result.Success) passed++;
+                    else failed++;
+                }
+                
+                if (failed == 0)
+                {
+                    statusLabel.Text = $"✅ Tous les tests réussis ({passed}/{results.Count})";
+                    statusLabel.ForeColor = Color.FromArgb(40, 167, 69);
+                }
+                else
+                {
+                    statusLabel.Text = $"⚠️ Tests terminés: {passed} réussis, {failed} échoués";
+                    statusLabel.ForeColor = Color.FromArgb(220, 53, 69);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erreur lors des tests: {ex.Message}", "Erreur de test", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                statusLabel.Text = "Erreur lors des tests";
+                ShowUserFriendlyError("Tests d'intégration", 
+                    "Erreur lors de l'exécution des tests",
+                    ex.Message,
+                    "Vérifiez l'environnement et réessayez");
+                statusLabel.Text = "❌ Erreur lors des tests";
+                statusLabel.ForeColor = Color.FromArgb(220, 53, 69);
+                LogError(ex);
+            }
+            finally
+            {
+                SetCalculationInProgress(false);
             }
         }
 
@@ -535,6 +663,169 @@ namespace FaceWebAppUI
 
         #endregion
 
+        #region Gestion d'erreurs avancée
+
+        /// <summary>
+        /// Affiche une erreur de manière conviviale pour l'utilisateur
+        /// </summary>
+        private void ShowUserFriendlyError(string category, string title, string technicalMessage, string userGuidance)
+        {
+            var errorDialog = new ErrorDialog(category, title, technicalMessage, userGuidance);
+            errorDialog.ShowDialog(this);
+        }
+
+        /// <summary>
+        /// Affiche un résumé des erreurs de validation
+        /// </summary>
+        private void ShowValidationErrorSummary()
+        {
+            var errors = GetCurrentValidationErrors();
+            if (errors.Count == 0) return;
+
+            var message = "Veuillez corriger les erreurs suivantes:\n\n";
+            for (int i = 0; i < errors.Count; i++)
+            {
+                message += $"{i + 1}. {errors[i]}\n";
+            }
+
+            MessageBox.Show(message, "Erreurs de validation", 
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        /// <summary>
+        /// Obtient la liste des erreurs de validation actuelles
+        /// </summary>
+        private List<string> GetCurrentValidationErrors()
+        {
+            var errors = new List<string>();
+
+            // Validation du nom de session
+            if (string.IsNullOrWhiteSpace(txtSessionName.Text))
+                errors.Add("Le nom de session est requis");
+            else if (txtSessionName.Text.Length < 3)
+                errors.Add("Le nom de session doit contenir au moins 3 caractères");
+
+            // Validation des ComboBox
+            if (cmbTheme.SelectedIndex == -1)
+                errors.Add("Veuillez sélectionner un thème de restaurant");
+            if (cmbRevenueSize.SelectedIndex == -1)
+                errors.Add("Veuillez sélectionner une taille de revenus");
+            if (cmbExperience.SelectedIndex == -1)
+                errors.Add("Veuillez sélectionner un niveau d'expérience");
+            if (cmbEquipmentCondition.SelectedIndex == -1)
+                errors.Add("Veuillez sélectionner l'état de l'équipement");
+
+            return errors;
+        }
+
+        /// <summary>
+        /// Valide l'intégrité des données d'entrée
+        /// </summary>
+        private bool ValidateInputDataIntegrity(Dictionary<string, object> inputData)
+        {
+            try
+            {
+                var kitchenSize = (double)inputData["kitchen_size_sqm"];
+                var workstations = (int)inputData["kitchen_workstations"];
+                var capacity = (int)inputData["daily_capacity"];
+                var staffCount = (int)inputData["staff_count"];
+                var equipmentValue = (double)inputData["equipment_value"];
+
+                // Vérifications de cohérence
+                if (workstations / kitchenSize > 0.5)
+                    return false; // Trop de postes pour la taille
+                
+                if (capacity / staffCount > 100)
+                    return false; // Capacité irréaliste par employé
+                
+                if (equipmentValue / kitchenSize < 100)
+                    return false; // Équipement sous-évalué
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Configure l'interface pendant le calcul
+        /// </summary>
+        private void SetCalculationInProgress(bool inProgress)
+        {
+            btnCalculate.Enabled = !inProgress;
+            btnReset.Enabled = !inProgress;
+            btnSave.Enabled = !inProgress;
+            btnLoad.Enabled = !inProgress;
+            
+            progressBar.Visible = inProgress;
+            progressBar.Style = inProgress ? ProgressBarStyle.Marquee : ProgressBarStyle.Blocks;
+            
+            if (inProgress)
+            {
+                statusLabel.Text = "Calcul en cours...";
+                statusLabel.ForeColor = Color.FromArgb(0, 123, 255);
+            }
+        }
+
+        /// <summary>
+        /// Animation de succès
+        /// </summary>
+        private async Task ShowSuccessAnimation()
+        {
+            var originalColor = statusLabel.ForeColor;
+            
+            for (int i = 0; i < 3; i++)
+            {
+                statusLabel.ForeColor = Color.FromArgb(40, 167, 69);
+                await Task.Delay(200);
+                statusLabel.ForeColor = originalColor;
+                await Task.Delay(200);
+            }
+        }
+
+        /// <summary>
+        /// Enregistre les informations de diagnostic
+        /// </summary>
+        private void LogDiagnosticInfo(Dictionary<string, object> diagnosticInfo)
+        {
+            var logMessage = $"[DIAGNOSTIC] Python: {diagnosticInfo.GetValueOrDefault("python_available", false)}, " +
+                           $"Fichiers: {diagnosticInfo.GetValueOrDefault("files_valid", false)}";
+            
+            // Log dans la console de debug
+            System.Diagnostics.Debug.WriteLine(logMessage);
+        }
+
+        /// <summary>
+        /// Enregistre les erreurs
+        /// </summary>
+        private void LogError(Exception ex)
+        {
+            var logMessage = $"[ERROR] {DateTime.Now:yyyy-MM-dd HH:mm:ss} - {ex.GetType().Name}: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                logMessage += $" | Inner: {ex.InnerException.Message}";
+            }
+            
+            // Log dans la console de debug
+            System.Diagnostics.Debug.WriteLine(logMessage);
+            
+            // Optionnel: Log dans un fichier
+            try
+            {
+                var logFile = Path.Combine(_projectRoot, "logs", "errors.log");
+                Directory.CreateDirectory(Path.GetDirectoryName(logFile));
+                File.AppendAllText(logFile, logMessage + Environment.NewLine);
+            }
+            catch
+            {
+                // Ignorer les erreurs de logging
+            }
+        }
+
+        #endregion
+
         /// <summary>
         /// Applique le thème moderne à l'interface
         /// </summary>
@@ -659,6 +950,141 @@ namespace FaceWebAppUI
             
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
+        }
+    }
+
+    /// <summary>
+    /// Dialogue d'erreur convivial pour l'utilisateur
+    /// </summary>
+    public partial class ErrorDialog : Form
+    {
+        public ErrorDialog(string category, string title, string technicalMessage, string userGuidance)
+        {
+            InitializeComponent();
+            SetupErrorDialog(category, title, technicalMessage, userGuidance);
+        }
+
+        private void SetupErrorDialog(string category, string title, string technicalMessage, string userGuidance)
+        {
+            this.Text = $"Erreur - {category}";
+            this.Size = new Size(500, 300);
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+
+            var mainPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 4,
+                ColumnCount = 2,
+                Padding = new Padding(20)
+            };
+
+            // Icône d'erreur
+            var iconLabel = new Label
+            {
+                Text = "⚠️",
+                Font = new Font("Segoe UI", 24F),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill
+            };
+
+            // Titre
+            var titleLabel = new Label
+            {
+                Text = title,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(220, 53, 69),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Dock = DockStyle.Fill
+            };
+
+            // Message utilisateur
+            var userMessageLabel = new Label
+            {
+                Text = userGuidance,
+                Font = new Font("Segoe UI", 10F),
+                TextAlign = ContentAlignment.TopLeft,
+                Dock = DockStyle.Fill,
+                AutoSize = false
+            };
+
+            // Détails techniques (masqués par défaut)
+            var detailsButton = new Button
+            {
+                Text = "Afficher les détails",
+                Size = new Size(120, 30),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(108, 117, 125),
+                ForeColor = Color.White
+            };
+
+            var detailsTextBox = new TextBox
+            {
+                Text = technicalMessage,
+                Multiline = true,
+                ReadOnly = true,
+                ScrollBars = ScrollBars.Vertical,
+                Dock = DockStyle.Fill,
+                Visible = false,
+                Font = new Font("Consolas", 9F)
+            };
+
+            detailsButton.Click += (s, e) =>
+            {
+                detailsTextBox.Visible = !detailsTextBox.Visible;
+                detailsButton.Text = detailsTextBox.Visible ? "Masquer les détails" : "Afficher les détails";
+                this.Height = detailsTextBox.Visible ? 400 : 300;
+            };
+
+            // Bouton OK
+            var okButton = new Button
+            {
+                Text = "OK",
+                Size = new Size(80, 30),
+                DialogResult = DialogResult.OK,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(0, 123, 255),
+                ForeColor = Color.White
+            };
+
+            // Agencement
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+            mainPanel.Controls.Add(iconLabel, 0, 0);
+            mainPanel.Controls.Add(titleLabel, 1, 0);
+            mainPanel.Controls.Add(userMessageLabel, 1, 1);
+            mainPanel.Controls.Add(detailsTextBox, 1, 2);
+            
+            var buttonPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.RightToLeft,
+                Dock = DockStyle.Fill
+            };
+            buttonPanel.Controls.Add(okButton);
+            buttonPanel.Controls.Add(detailsButton);
+            
+            mainPanel.Controls.Add(buttonPanel, 1, 3);
+
+            this.Controls.Add(mainPanel);
+            this.AcceptButton = okButton;
+        }
+
+        private void InitializeComponent()
+        {
+            this.SuspendLayout();
+            this.AutoScaleDimensions = new SizeF(7F, 15F);
+            this.AutoScaleMode = AutoScaleMode.Font;
+            this.ClientSize = new Size(500, 300);
+            this.Name = "ErrorDialog";
+            this.ResumeLayout(false);
         }
     }
 }
