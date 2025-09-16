@@ -13,23 +13,45 @@ namespace FaceWebAppUI
 {
     public partial class MainForm : Form
     {
-        private readonly string _pythonScriptPath;
-        private readonly string _projectRoot;
+        private TabControl tabControl;
+        private TabPage tabInputs;
+        private TabPage tabResults;
+        private TabPage tabWorkflow;
+        private StatusStrip statusStrip;
+        private ToolStripStatusLabel statusLabel;
+        private ToolStripProgressBar progressBar;
         private OutputPipe _outputPipe;
-        
+        private SessionManager _sessionManager;
+        private Timer _autoSaveTimer;
+        private readonly string _projectRoot;
+        private readonly string _pythonScriptPath;
+
         public MainForm()
         {
+            _projectRoot = GetProjectRoot();
             InitializeComponent();
+            SetDefaultValues();
+            
+            // Initialiser OutputPipe
+            _outputPipe = new OutputPipe();
+            
+            // Initialiser SessionManager
+            _sessionManager = new SessionManager(this);
+            
+            // Configurer la sauvegarde automatique (toutes les 5 minutes)
+            _autoSaveTimer = new Timer();
+            _autoSaveTimer.Interval = 300000; // 5 minutes
+            _autoSaveTimer.Tick += AutoSaveTimer_Tick;
+            _autoSaveTimer.Start();
+            
+            // Gestionnaire de fermeture pour sauvegarde automatique
+            this.FormClosing += MainForm_FormClosing;
             
             // Initialiser les chemins
-            _projectRoot = Path.GetDirectoryName(Path.GetDirectoryName(Application.StartupPath)) ?? "";
             _pythonScriptPath = Path.Combine(_projectRoot, "engine_api.py");
             
             // Configurer l'interface
             InitializeFormLayout();
-            
-            // Initialiser OutputPipe
-            _outputPipe = new OutputPipe(this);
             
             // Ajouter le menu de tests (en mode développement)
             #if DEBUG
@@ -256,11 +278,19 @@ namespace FaceWebAppUI
 
         private void BtnReset_Click(object sender, EventArgs e)
         {
-            SetDefaultValues();
-            // ... (no changes)
+            var result = MessageBox.Show("Êtes-vous sûr de vouloir réinitialiser tous les champs?", 
+                "Confirmer la réinitialisation", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            
+            if (result == DialogResult.Yes)
+            {
+                SetDefaultValues();
+                _currentWorkflowStep = 0;
+                UpdateWorkflowContent();
+                statusLabel.Text = "Formulaire réinitialisé";
+            }
         }
 
-        private void LoadInputData(Dictionary<string, object> data)
+        public void LoadInputData(Dictionary<string, object> data)
         {
             if (data.ContainsKey("session_name")) txtSessionName.Text = data["session_name"].ToString();
             if (data.ContainsKey("restaurant_theme")) cmbTheme.SelectedItem = data["restaurant_theme"].ToString();
@@ -416,6 +446,65 @@ namespace FaceWebAppUI
                     ex.Message,
                     "Vérifiez l'environnement et réessayez");
                 statusLabel.Text = "❌ Erreur lors des tests";
+                statusLabel.ForeColor = Color.FromArgb(220, 53, 69);
+                LogError(ex);
+            }
+            finally
+            {
+                SetCalculationInProgress(false);
+            }
+        }
+
+        /// <summary>
+        /// Exécute les tests d'expérience utilisateur
+        /// </summary>
+        private async void RunUserExperienceTests()
+        {
+            var uxTestRunner = new UserExperienceTest(this);
+            statusLabel.Text = "🎯 Exécution des tests d'expérience utilisateur...";
+            
+            SetCalculationInProgress(true);
+            
+            try
+            {
+                var results = await uxTestRunner.RunAllUserExperienceTestsAsync();
+                uxTestRunner.ShowTestResults();
+                
+                int passed = 0, warnings = 0, failed = 0;
+                foreach (var result in results)
+                {
+                    if (result.Success)
+                        passed++;
+                    else if (result.Message.Contains("Améliorations"))
+                        warnings++;
+                    else
+                        failed++;
+                }
+                
+                var score = (passed * 100.0 / results.Count);
+                if (score >= 90)
+                {
+                    statusLabel.Text = $"🏆 Score UX: {score:F0}% - Excellent!";
+                    statusLabel.ForeColor = Color.FromArgb(40, 167, 69);
+                }
+                else if (score >= 75)
+                {
+                    statusLabel.Text = $"👍 Score UX: {score:F0}% - Bon";
+                    statusLabel.ForeColor = Color.FromArgb(0, 123, 255);
+                }
+                else
+                {
+                    statusLabel.Text = $"⚠️ Score UX: {score:F0}% - Améliorations possibles";
+                    statusLabel.ForeColor = Color.FromArgb(255, 193, 7);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowUserFriendlyError("Tests UX", 
+                    "Erreur lors des tests d'expérience utilisateur",
+                    ex.Message,
+                    "Réessayez plus tard");
+                statusLabel.Text = "❌ Erreur lors des tests UX";
                 statusLabel.ForeColor = Color.FromArgb(220, 53, 69);
                 LogError(ex);
             }
@@ -659,6 +748,600 @@ namespace FaceWebAppUI
             }
 
             return isValid;
+        }
+
+        #endregion
+
+        #region Gestion des Sessions
+
+        /// <summary>
+        /// Sauvegarde rapide de la session courante
+        /// </summary>
+        private void BtnSave_Click(object sender, EventArgs e)
+        {
+            _sessionManager.ShowSaveDialog();
+        }
+
+        /// <summary>
+        /// Chargement d'une session
+        /// </summary>
+        private void BtnLoad_Click(object sender, EventArgs e)
+        {
+            _sessionManager.ShowLoadDialog();
+        }
+
+        /// <summary>
+        /// Gestionnaire de sessions
+        /// </summary>
+        private void ShowSessionManager()
+        {
+            _sessionManager.ShowSessionManager();
+        }
+
+        /// <summary>
+        /// Sauvegarde automatique
+        /// </summary>
+        private void AutoSaveTimer_Tick(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(txtSessionName?.Text))
+            {
+                _sessionManager.AutoSave();
+            }
+        }
+
+        /// <summary>
+        /// Gestionnaire de fermeture pour sauvegarde automatique
+        /// </summary>
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(txtSessionName?.Text))
+            {
+                var result = MessageBox.Show("Voulez-vous sauvegarder votre session avant de fermer?", 
+                    "Sauvegarder la session", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                
+                switch (result)
+                {
+                    case DialogResult.Yes:
+                        if (!_sessionManager.SaveCurrentSession())
+                        {
+                            e.Cancel = true;
+                            return;
+                        }
+                        break;
+                    case DialogResult.Cancel:
+                        e.Cancel = true;
+                        return;
+                }
+            }
+            
+            _autoSaveTimer?.Stop();
+            _autoSaveTimer?.Dispose();
+        }
+
+        /// <summary>
+        /// Obtient le nom de la session courante
+        /// </summary>
+        public string GetSessionName()
+        {
+            return txtSessionName?.Text ?? "Session sans nom";
+        }
+
+        /// <summary>
+        /// Obtient l'étape courante du workflow
+        /// </summary>
+        public int GetCurrentWorkflowStep()
+        {
+            return _currentWorkflowStep;
+        }
+
+        /// <summary>
+        /// Définit l'étape courante du workflow
+        /// </summary>
+        public void SetCurrentWorkflowStep(int step)
+        {
+            _currentWorkflowStep = Math.Max(0, Math.Min(step, _workflowSteps.Length - 1));
+            UpdateWorkflowContent();
+        }
+
+        /// <summary>
+        /// Obtient les notes de session
+        /// </summary>
+        public string GetSessionNotes()
+        {
+            // Pour l'instant, retourner une chaîne vide
+            // Peut être étendu avec un champ de notes dans l'interface
+            return "";
+        }
+
+        /// <summary>
+        /// Définit les notes de session
+        /// </summary>
+        public void SetSessionNotes(string notes)
+        {
+            // Pour l'instant, ne rien faire
+            // Peut être étendu avec un champ de notes dans l'interface
+        }
+
+        #endregion
+
+        #region Navigation et Workflow
+
+        private int _currentWorkflowStep = 0;
+        private readonly string[] _workflowSteps = {
+            "Informations générales",
+            "Configuration cuisine",
+            "Personnel et formation",
+            "Équipement",
+            "Immobilier",
+            "Validation et calcul"
+        };
+
+        /// <summary>
+        /// Crée les boutons de navigation dans la barre de statut
+        /// </summary>
+        private ToolStripItem CreateNavigationButtons()
+        {
+            var navPanel = new ToolStripControlHost(new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                Margin = new Padding(0)
+            });
+
+            var flowPanel = (FlowLayoutPanel)navPanel.Control;
+
+            var btnPrevious = new Button
+            {
+                Text = "◀ Précédent",
+                Size = new Size(80, 25),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(108, 117, 125),
+                ForeColor = Color.White,
+                Enabled = false
+            };
+            btnPrevious.Click += BtnPrevious_Click;
+
+            var btnNext = new Button
+            {
+                Text = "Suivant ▶",
+                Size = new Size(80, 25),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(0, 123, 255),
+                ForeColor = Color.White
+            };
+            btnNext.Click += BtnNext_Click;
+
+            flowPanel.Controls.Add(btnPrevious);
+            flowPanel.Controls.Add(btnNext);
+
+            return navPanel;
+        }
+
+        /// <summary>
+        /// Gère le changement d'onglet
+        /// </summary>
+        private void TabControl_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateNavigationState();
+            UpdateStatusForCurrentTab();
+        }
+
+        /// <summary>
+        /// Met à jour l'état de la navigation
+        /// </summary>
+        private void UpdateNavigationState()
+        {
+            var btnPrevious = FindNavigationButton("◀ Précédent");
+            var btnNext = FindNavigationButton("Suivant ▶");
+
+            if (btnPrevious != null && btnNext != null)
+            {
+                btnPrevious.Enabled = tabControl.SelectedIndex > 0;
+                btnNext.Enabled = tabControl.SelectedIndex < tabControl.TabPages.Count - 1;
+
+                // Changer le texte du bouton suivant sur le dernier onglet
+                if (tabControl.SelectedIndex == tabControl.TabPages.Count - 1)
+                {
+                    btnNext.Text = "Terminer";
+                    btnNext.BackColor = Color.FromArgb(40, 167, 69);
+                }
+                else
+                {
+                    btnNext.Text = "Suivant ▶";
+                    btnNext.BackColor = Color.FromArgb(0, 123, 255);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Met à jour le statut selon l'onglet actuel
+        /// </summary>
+        private void UpdateStatusForCurrentTab()
+        {
+            switch (tabControl.SelectedIndex)
+            {
+                case 0: // Saisie
+                    statusLabel.Text = "📝 Saisissez les paramètres de votre restaurant";
+                    break;
+                case 1: // Workflow
+                    statusLabel.Text = $"🔄 Étape {_currentWorkflowStep + 1}/{_workflowSteps.Length}: {_workflowSteps[_currentWorkflowStep]}";
+                    break;
+                case 2: // Résultats
+                    statusLabel.Text = "📊 Consultez vos résultats détaillés";
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Trouve un bouton de navigation par son texte
+        /// </summary>
+        private Button FindNavigationButton(string text)
+        {
+            foreach (ToolStripItem item in statusStrip.Items)
+            {
+                if (item is ToolStripControlHost host && host.Control is FlowLayoutPanel panel)
+                {
+                    foreach (Control control in panel.Controls)
+                    {
+                        if (control is Button btn && btn.Text == text)
+                            return btn;
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Navigation vers l'onglet précédent
+        /// </summary>
+        private void BtnPrevious_Click(object sender, EventArgs e)
+        {
+            if (tabControl.SelectedIndex > 0)
+            {
+                tabControl.SelectedIndex--;
+            }
+        }
+
+        /// <summary>
+        /// Navigation vers l'onglet suivant
+        /// </summary>
+        private void BtnNext_Click(object sender, EventArgs e)
+        {
+            if (tabControl.SelectedIndex < tabControl.TabPages.Count - 1)
+            {
+                // Valider avant de passer à l'onglet suivant
+                if (ValidateCurrentTab())
+                {
+                    tabControl.SelectedIndex++;
+                }
+            }
+            else
+            {
+                // Dernière étape - finaliser
+                FinalizeWorkflow();
+            }
+        }
+
+        /// <summary>
+        /// Valide l'onglet actuel avant navigation
+        /// </summary>
+        private bool ValidateCurrentTab()
+        {
+            switch (tabControl.SelectedIndex)
+            {
+                case 0: // Saisie
+                    return ValidateBasicInputs();
+                case 1: // Workflow
+                    return ValidateWorkflowStep();
+                default:
+                    return true;
+            }
+        }
+
+        /// <summary>
+        /// Valide les entrées de base
+        /// </summary>
+        private bool ValidateBasicInputs()
+        {
+            var errors = GetCurrentValidationErrors();
+            if (errors.Count > 0)
+            {
+                ShowValidationErrorSummary();
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Valide l'étape actuelle du workflow
+        /// </summary>
+        private bool ValidateWorkflowStep()
+        {
+            // Validation spécifique à l'étape du workflow
+            return true;
+        }
+
+        /// <summary>
+        /// Finalise le workflow
+        /// </summary>
+        private void FinalizeWorkflow()
+        {
+            if (ValidateAllInputs())
+            {
+                // Déclencher le calcul automatiquement
+                BtnCalculate_Click(this, EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Initialise les contrôles du workflow
+        /// </summary>
+        private void InitializeWorkflowControls()
+        {
+            var workflowPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 3,
+                ColumnCount = 1,
+                Padding = new Padding(20)
+            };
+
+            // En-tête du workflow
+            var headerPanel = CreateWorkflowHeader();
+            workflowPanel.Controls.Add(headerPanel, 0, 0);
+            workflowPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 100F));
+
+            // Contenu du workflow
+            var contentPanel = CreateWorkflowContent();
+            workflowPanel.Controls.Add(contentPanel, 0, 1);
+            workflowPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            // Pied du workflow
+            var footerPanel = CreateWorkflowFooter();
+            workflowPanel.Controls.Add(footerPanel, 0, 2);
+            workflowPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+
+            tabWorkflow.Controls.Add(workflowPanel);
+        }
+
+        /// <summary>
+        /// Crée l'en-tête du workflow
+        /// </summary>
+        private Panel CreateWorkflowHeader()
+        {
+            var panel = new Panel { Dock = DockStyle.Fill };
+            
+            var titleLabel = new Label
+            {
+                Text = "Assistant de configuration",
+                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(52, 58, 64),
+                Dock = DockStyle.Top,
+                Height = 40,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            var progressLabel = new Label
+            {
+                Name = "lblWorkflowProgress",
+                Text = "Étape 1/6: Informations générales",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(108, 117, 125),
+                Dock = DockStyle.Top,
+                Height = 25,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            var progressBar = new ProgressBar
+            {
+                Name = "pbWorkflowProgress",
+                Dock = DockStyle.Bottom,
+                Height = 20,
+                Style = ProgressBarStyle.Continuous,
+                Value = 17 // 1/6 * 100
+            };
+
+            panel.Controls.Add(titleLabel);
+            panel.Controls.Add(progressLabel);
+            panel.Controls.Add(progressBar);
+
+            return panel;
+        }
+
+        /// <summary>
+        /// Crée le contenu du workflow
+        /// </summary>
+        private Panel CreateWorkflowContent()
+        {
+            var panel = new Panel
+            {
+                Name = "pnlWorkflowContent",
+                Dock = DockStyle.Fill,
+                AutoScroll = true
+            };
+
+            // Le contenu sera mis à jour dynamiquement selon l'étape
+            UpdateWorkflowContent();
+
+            return panel;
+        }
+
+        /// <summary>
+        /// Crée le pied du workflow
+        /// </summary>
+        private Panel CreateWorkflowFooter()
+        {
+            var panel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.RightToLeft,
+                Padding = new Padding(0, 10, 0, 0)
+            };
+
+            var btnWorkflowNext = new Button
+            {
+                Name = "btnWorkflowNext",
+                Text = "Suivant",
+                Size = new Size(100, 35),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(0, 123, 255),
+                ForeColor = Color.White
+            };
+            btnWorkflowNext.Click += BtnWorkflowNext_Click;
+
+            var btnWorkflowPrevious = new Button
+            {
+                Name = "btnWorkflowPrevious",
+                Text = "Précédent",
+                Size = new Size(100, 35),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(108, 117, 125),
+                ForeColor = Color.White,
+                Enabled = false
+            };
+            btnWorkflowPrevious.Click += BtnWorkflowPrevious_Click;
+
+            panel.Controls.Add(btnWorkflowNext);
+            panel.Controls.Add(btnWorkflowPrevious);
+
+            return panel;
+        }
+
+        /// <summary>
+        /// Met à jour le contenu du workflow selon l'étape
+        /// </summary>
+        private void UpdateWorkflowContent()
+        {
+            var contentPanel = this.Controls.Find("pnlWorkflowContent", true).FirstOrDefault() as Panel;
+            if (contentPanel == null) return;
+
+            contentPanel.Controls.Clear();
+
+            switch (_currentWorkflowStep)
+            {
+                case 0:
+                    CreateStep1_GeneralInfo(contentPanel);
+                    break;
+                case 1:
+                    CreateStep2_KitchenConfig(contentPanel);
+                    break;
+                case 2:
+                    CreateStep3_StaffTraining(contentPanel);
+                    break;
+                case 3:
+                    CreateStep4_Equipment(contentPanel);
+                    break;
+                case 4:
+                    CreateStep5_Location(contentPanel);
+                    break;
+                case 5:
+                    CreateStep6_Validation(contentPanel);
+                    break;
+            }
+
+            UpdateWorkflowProgress();
+        }
+
+        /// <summary>
+        /// Met à jour la progression du workflow
+        /// </summary>
+        private void UpdateWorkflowProgress()
+        {
+            var progressLabel = this.Controls.Find("lblWorkflowProgress", true).FirstOrDefault() as Label;
+            var progressBar = this.Controls.Find("pbWorkflowProgress", true).FirstOrDefault() as ProgressBar;
+            var btnNext = this.Controls.Find("btnWorkflowNext", true).FirstOrDefault() as Button;
+            var btnPrevious = this.Controls.Find("btnWorkflowPrevious", true).FirstOrDefault() as Button;
+
+            if (progressLabel != null)
+                progressLabel.Text = $"Étape {_currentWorkflowStep + 1}/{_workflowSteps.Length}: {_workflowSteps[_currentWorkflowStep]}";
+
+            if (progressBar != null)
+                progressBar.Value = (int)((_currentWorkflowStep + 1) * 100.0 / _workflowSteps.Length);
+
+            if (btnPrevious != null)
+                btnPrevious.Enabled = _currentWorkflowStep > 0;
+
+            if (btnNext != null)
+            {
+                if (_currentWorkflowStep == _workflowSteps.Length - 1)
+                {
+                    btnNext.Text = "Calculer";
+                    btnNext.BackColor = Color.FromArgb(40, 167, 69);
+                }
+                else
+                {
+                    btnNext.Text = "Suivant";
+                    btnNext.BackColor = Color.FromArgb(0, 123, 255);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Initialise l'état du workflow
+        /// </summary>
+        private void InitializeWorkflowState()
+        {
+            _currentWorkflowStep = 0;
+        }
+
+        /// <summary>
+        /// Navigation workflow - étape suivante
+        /// </summary>
+        private void BtnWorkflowNext_Click(object sender, EventArgs e)
+        {
+            if (_currentWorkflowStep < _workflowSteps.Length - 1)
+            {
+                if (ValidateCurrentWorkflowStep())
+                {
+                    _currentWorkflowStep++;
+                    UpdateWorkflowContent();
+                }
+            }
+            else
+            {
+                // Dernière étape - lancer le calcul
+                if (ValidateAllInputs())
+                {
+                    tabControl.SelectedTab = tabResults;
+                    BtnCalculate_Click(sender, e);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Navigation workflow - étape précédente
+        /// </summary>
+        private void BtnWorkflowPrevious_Click(object sender, EventArgs e)
+        {
+            if (_currentWorkflowStep > 0)
+            {
+                _currentWorkflowStep--;
+                UpdateWorkflowContent();
+            }
+        }
+
+        /// <summary>
+        /// Valide l'étape actuelle du workflow
+        /// </summary>
+        private bool ValidateCurrentWorkflowStep()
+        {
+            switch (_currentWorkflowStep)
+            {
+                case 0: // Infos générales
+                    return !string.IsNullOrWhiteSpace(txtSessionName?.Text) && 
+                           cmbTheme?.SelectedIndex >= 0 && 
+                           cmbRevenueSize?.SelectedIndex >= 0;
+                case 1: // Configuration cuisine
+                    return numKitchenSize?.Value > 0 && numWorkstations?.Value > 0 && numCapacity?.Value > 0;
+                case 2: // Personnel
+                    return numStaffCount?.Value > 0 && cmbExperience?.SelectedIndex >= 0;
+                case 3: // Équipement
+                    return numEquipmentValue?.Value > 0 && cmbEquipmentCondition?.SelectedIndex >= 0;
+                case 4: // Immobilier
+                    return numRentPerSqm?.Value > 0;
+                default:
+                    return true;
+            }
         }
 
         #endregion
@@ -938,51 +1621,6 @@ namespace FaceWebAppUI
         /// <summary>
         /// Ajoute un menu pour les tests (pour le développement)
         /// </summary>
-        private void AddTestMenu()
-        {
-            var menuStrip = new MenuStrip();
-            var testMenu = new ToolStripMenuItem("Tests");
-            var runTestsItem = new ToolStripMenuItem("Exécuter tests d'intégration");
-            
-            runTestsItem.Click += (s, e) => RunIntegrationTests();
-            testMenu.DropDownItems.Add(runTestsItem);
-            menuStrip.Items.Add(testMenu);
-            
-            this.MainMenuStrip = menuStrip;
-            this.Controls.Add(menuStrip);
-        }
-    }
-
-    /// <summary>
-    /// Dialogue d'erreur convivial pour l'utilisateur
-    /// </summary>
-    public partial class ErrorDialog : Form
-    {
-        public ErrorDialog(string category, string title, string technicalMessage, string userGuidance)
-        {
-            InitializeComponent();
-            SetupErrorDialog(category, title, technicalMessage, userGuidance);
-        }
-
-        private void SetupErrorDialog(string category, string title, string technicalMessage, string userGuidance)
-        {
-            this.Text = $"Erreur - {category}";
-            this.Size = new Size(500, 300);
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-
-            var mainPanel = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                RowCount = 4,
-                ColumnCount = 2,
-                Padding = new Padding(20)
-            };
-
-            // Icône d'erreur
-            var iconLabel = new Label
             {
                 Text = "⚠️",
                 Font = new Font("Segoe UI", 24F),
