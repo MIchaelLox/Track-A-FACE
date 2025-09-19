@@ -6,7 +6,6 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ApplicationIcon>icon.ico</ApplicationIcon>
     <AssemblyTitle>Track-A-FACE - Financial Analysis Calculator</AssemblyTitle>
     <AssemblyDescription>Interface utilisateur pour le moteur de calcul financier Track-A-FACE</AssemblyDescription>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
@@ -16,6 +15,7 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="1.7.1" />
   </ItemGroup>
 
 </Project>

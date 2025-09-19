@@ -1,3 +1,7 @@
+using System;
+using System.Drawing;
+using System.Windows.Forms;
+
 namespace FaceWebAppUI;
 
 partial class MainForm
@@ -31,7 +35,7 @@ partial class MainForm
         this.tabControl = new TabControl();
         this.tabInputs = new TabPage();
         this.tabResults = new TabPage();
-        this.tabComparison = new TabPage();
+        this.tabWorkflow = new TabPage();
         
         // Labels
         this.lblTitle = new Label();
@@ -91,7 +95,7 @@ partial class MainForm
         this.tabControl.Dock = DockStyle.Fill;
         this.tabControl.Controls.Add(this.tabInputs);
         this.tabControl.Controls.Add(this.tabResults);
-        this.tabControl.Controls.Add(this.tabComparison);
+        this.tabControl.Controls.Add(this.tabWorkflow);
         
         // Configure Input Tab
         this.tabInputs.Text = "Paramètres d'entrée";
@@ -101,9 +105,9 @@ partial class MainForm
         this.tabResults.Text = "Résultats";
         this.tabResults.UseVisualStyleBackColor = true;
         
-        // Configure Comparison Tab
-        this.tabComparison.Text = "Comparaison";
-        this.tabComparison.UseVisualStyleBackColor = true;
+        // Configure Workflow Tab
+        this.tabWorkflow.Text = "Workflow";
+        this.tabWorkflow.UseVisualStyleBackColor = true;
         
         // Main Form
         this.AutoScaleDimensions = new SizeF(8F, 20F);
@@ -129,54 +133,54 @@ partial class MainForm
     private TabControl tabControl;
     private TabPage tabInputs;
     private TabPage tabResults;
-    private TabPage tabComparison;
+    private TabPage tabWorkflow;
     
     // Labels
     private Label lblTitle;
-    private Label lblSessionName;
-    private Label lblTheme;
-    private Label lblRevenueSize;
-    private Label lblKitchenSize;
-    private Label lblWorkstations;
-    private Label lblCapacity;
-    private Label lblStaffCount;
-    private Label lblExperience;
-    private Label lblTrainingHours;
-    private Label lblEquipmentAge;
-    private Label lblEquipmentCondition;
-    private Label lblEquipmentValue;
-    private Label lblRentPerSqm;
+    internal Label lblSessionName;
+    internal Label lblTheme;
+    internal Label lblRevenueSize;
+    internal Label lblKitchenSize;
+    internal Label lblWorkstations;
+    internal Label lblCapacity;
+    internal Label lblStaffCount;
+    internal Label lblExperience;
+    internal Label lblTrainingHours;
+    internal Label lblEquipmentAge;
+    internal Label lblEquipmentCondition;
+    internal Label lblEquipmentValue;
+    internal Label lblRentPerSqm;
     
     // Input controls
-    private TextBox txtSessionName;
-    private ComboBox cmbTheme;
-    private ComboBox cmbRevenueSize;
-    private NumericUpDown numKitchenSize;
-    private NumericUpDown numWorkstations;
-    private NumericUpDown numCapacity;
-    private NumericUpDown numStaffCount;
-    private ComboBox cmbExperience;
-    private NumericUpDown numTrainingHours;
-    private NumericUpDown numEquipmentAge;
-    private ComboBox cmbEquipmentCondition;
-    private NumericUpDown numEquipmentValue;
-    private NumericUpDown numRentPerSqm;
+    internal TextBox txtSessionName;
+    internal ComboBox cmbTheme;
+    internal ComboBox cmbRevenueSize;
+    internal NumericUpDown numKitchenSize;
+    internal NumericUpDown numWorkstations;
+    internal NumericUpDown numCapacity;
+    internal NumericUpDown numStaffCount;
+    internal ComboBox cmbExperience;
+    internal NumericUpDown numTrainingHours;
+    internal NumericUpDown numEquipmentAge;
+    internal ComboBox cmbEquipmentCondition;
+    internal NumericUpDown numEquipmentValue;
+    internal NumericUpDown numRentPerSqm;
     
     // Buttons
-    private Button btnCalculate;
+    internal Button btnCalculate;
     private Button btnReset;
-    private Button btnSave;
-    private Button btnLoad;
-    private Button btnExportPDF;
-    private Button btnExportCSV;
+    internal Button btnSave;
+    internal Button btnLoad;
+    internal Button btnExportPDF;
+    internal Button btnExportCSV;
     
     // Results display
-    private DataGridView dgvResults;
-    private Label lblTotalCost;
-    private Label lblStaffCosts;
-    private Label lblEquipmentCosts;
-    private Label lblLocationCosts;
-    private Label lblOperationalCosts;
+    internal DataGridView dgvResults;
+    internal Label lblTotalCost;
+    internal Label lblStaffCosts;
+    internal Label lblEquipmentCosts;
+    internal Label lblLocationCosts;
+    internal Label lblOperationalCosts;
     
     // Progress and status
     private ProgressBar progressBar;

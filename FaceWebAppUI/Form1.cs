@@ -33,7 +33,7 @@ namespace FaceWebAppUI
             SetDefaultValues();
             
             // Initialiser OutputPipe
-            _outputPipe = new OutputPipe();
+            _outputPipe = new OutputPipe(this);
             
             // Initialiser SessionManager
             _sessionManager = new SessionManager(this);
