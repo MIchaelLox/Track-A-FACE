@@ -680,8 +680,9 @@ def get_all_daos(db_manager: DatabaseManager) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     # Test d'initialisation
-    initializer = DatabaseInitializer()
-    if initializer.initialize_database():
+    try:
+        initializer = DatabaseInitializer()
+        initializer.initialize_database()
         print("✅ Base de données Track-A-FACE initialisée avec succès")
-    else:
+    except Exception:
         print("❌ Erreur lors de l'initialisation de la base de données")
