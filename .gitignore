@@ -58,6 +58,10 @@ obj/
 *.user
 *.suo
 *.cache
+.vs/
+packages/
+*.nupkg
+*.dtbcache.json
 
 # Excel temporary files
 ~$*.xlsx
