@@ -161,7 +161,8 @@ namespace TrackAFaceWinForms.Dialogs
         {
             try
             {
-                _sessions = SessionManager.ListSessions();
+                var sessionManager = new SessionManager();
+                _sessions = sessionManager.ListSessions();
                 
                 lstSessions.Items.Clear();
                 
@@ -303,7 +304,8 @@ namespace TrackAFaceWinForms.Dialogs
                 {
                     try
                     {
-                        SessionManager.DeleteSession(session.SessionName);
+                        var sessionManager = new SessionManager();
+                        sessionManager.DeleteSession(session.FilePath);
                         MessageBox.Show(
                             $"Session '{session.SessionName}' supprimée avec succès.",
                             "Suppression réussie",
