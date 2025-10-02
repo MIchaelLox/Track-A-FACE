@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35222.181
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrackAFaceUI", "TrackAFaceUI\TrackAFaceUI.csproj", "{1615AEF7-451D-4E30-AFB7-E0A7CE80583B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1615AEF7-451D-4E30-AFB7-E0A7CE80583B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1615AEF7-451D-4E30-AFB7-E0A7CE80583B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1615AEF7-451D-4E30-AFB7-E0A7CE80583B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1615AEF7-451D-4E30-AFB7-E0A7CE80583B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C9C533FC-4F7C-4AF2-8312-94923BB1248B}
+	EndGlobalSection
+EndGlobal
