@@ -81,6 +81,7 @@
       <DependentUpon>ResultsForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Helpers\ConfigurationHelper.cs" />
+    <Compile Include="Helpers\ValidationHelper.cs" />
     <Compile Include="Models\CalculationResultModel.cs" />
     <Compile Include="Models\RestaurantInputModel.cs" />
     <Compile Include="Program.cs" />

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using TrackAFaceWinForms.Helpers;
 using TrackAFaceWinForms.Models;
 
 namespace TrackAFaceWinForms.Forms
@@ -66,23 +67,15 @@ namespace TrackAFaceWinForms.Forms
         {
             var inputs = GetInputData();
 
-            // Validation de base
-            if (string.IsNullOrWhiteSpace(inputs.SessionName))
+            if (!ValidationHelper.ValidateInputs(inputs, out string error))
             {
-                MessageBox.Show("Le nom de la session est requis.", "Erreur",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ValidationHelper.ShowValidationError(error);
                 return;
             }
 
-            // Pour l'instant, juste afficher les données
-            MessageBox.Show($"Session: {inputs.SessionName}\n" +
-                          $"Theme: {inputs.Theme}\n" +
-                          $"Staff: {inputs.StaffCount}\n" +
-                          $"Total Equipment: {inputs.EquipmentValue:N2} CAD$\n\n" +
-                          "Calcul Python sera implémenté JEUDI!",
-                          "Données Saisies",
-                          MessageBoxButtons.OK,
-                          MessageBoxIcon.Information);
+            MessageBox.Show("Validation réussie!",
+                "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            
         }
 
         // Méthode pour récupérer les données du formulaire
