@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS inputs (
 -- Table des facteurs de coût et multiplicateurs
 CREATE TABLE IF NOT EXISTS cost_factors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    factor_category VARCHAR(50) NOT NULL CHECK (factor_category IN ('staff', 'equipment', 'location', 'operations')),
+    factor_category VARCHAR(50) NOT NULL CHECK (factor_category IN ('staff', 'training', 'salary', 'equipment', 'location', 'operations')),
     factor_name VARCHAR(100) NOT NULL,
     restaurant_theme VARCHAR(50),
     revenue_size VARCHAR(20),
