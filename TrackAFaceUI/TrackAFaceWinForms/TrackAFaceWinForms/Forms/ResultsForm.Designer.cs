@@ -1,4 +1,4 @@
-﻿namespace TrackAFaceWinForms.Forms
+namespace TrackAFaceWinForms.Forms
 {
     partial class ResultsForm
     {
@@ -151,7 +151,6 @@
             // 
             this.dgvOperational.AllowUserToAddRows = false;
             this.dgvOperational.AllowUserToDeleteRows = false;
-            this.dgvOperational.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgvOperational.Location = new System.Drawing.Point(20, 525);
             this.dgvOperational.Name = "dgvOperational";
             this.dgvOperational.ReadOnly = true;
@@ -166,6 +165,7 @@
             this.btnExportCsv.TabIndex = 9;
             this.btnExportCsv.Text = "Export CSV";
             this.btnExportCsv.UseVisualStyleBackColor = true;
+            this.btnExportCsv.Click += new System.EventHandler(this.btnExportCsv_Click);
             // 
             // btnExportPdf
             // 

@@ -1,13 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using TrackAFaceWinForms.Models;
+using TrackAFaceWinForms.Helpers;
 
 namespace TrackAFaceWinForms.Forms
 {
@@ -151,6 +153,68 @@ namespace TrackAFaceWinForms.Forms
                 {
                     dgv.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Bouton Export CSV - Exporte les résultats vers un fichier CSV
+        /// </summary>
+        private void btnExportCsv_Click(object sender, EventArgs e)
+        {
+            if (_results == null)
+            {
+                MessageBox.Show(
+                    "Aucun résultat à exporter.",
+                    "Export impossible",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
+            }
+
+            try
+            {
+                // Générer un nom de fichier par défaut
+                string defaultFileName = ExportHelper.GenerateSafeFileName(_results.SessionName, "csv");
+                string defaultDirectory = ExportHelper.GetDefaultExportDirectory();
+
+                // Dialogue de sauvegarde
+                var saveDialog = new SaveFileDialog
+                {
+                    Title = "Exporter les résultats en CSV",
+                    Filter = "Fichiers CSV (*.csv)|*.csv|Tous les fichiers (*.*)|*.*",
+                    FileName = defaultFileName,
+                    InitialDirectory = defaultDirectory,
+                    DefaultExt = "csv"
+                };
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Exporter vers CSV
+                    ExportHelper.ExportToCsv(_results, saveDialog.FileName);
+
+                    // Demander si l'utilisateur veut ouvrir le fichier
+                    var openResult = MessageBox.Show(
+                        $"Export CSV réussi!\n\nFichier: {Path.GetFileName(saveDialog.FileName)}\n\nVoulez-vous ouvrir le fichier?",
+                        "Export réussi",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Information
+                    );
+
+                    if (openResult == DialogResult.Yes)
+                    {
+                        System.Diagnostics.Process.Start(saveDialog.FileName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Erreur lors de l'export CSV:\n\n{ex.Message}",
+                    "Erreur d'export",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
         }
 
