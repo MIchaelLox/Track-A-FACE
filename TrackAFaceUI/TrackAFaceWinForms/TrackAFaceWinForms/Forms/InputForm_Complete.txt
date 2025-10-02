@@ -1,4 +1,6 @@
-﻿namespace TrackAFaceWinForms.Forms
+// COPIEZ CE CODE DANS InputForm.Designer.cs
+
+namespace TrackAFaceWinForms.Forms
 {
     partial class InputForm
     {
@@ -140,7 +142,7 @@
             this.numStaffCount.Minimum = 1;
             this.numStaffCount.Maximum = 500;
             this.numStaffCount.Value = 10;
-
+            
             this.lblRetrainingHours.Location = new System.Drawing.Point(20, 280);
             this.lblRetrainingHours.Text = "Heures de formation:";
             this.numRetrainingHours.Location = new System.Drawing.Point(150, 277);
@@ -155,18 +157,18 @@
             this.numKitchenSize.Minimum = 10;
             this.numKitchenSize.Maximum = 1000;
             this.numKitchenSize.Value = 100;
-
+            
             this.lblRentMonthly.Location = new System.Drawing.Point(420, 85);
             this.lblRentMonthly.Text = "Loyer mensuel (CAD$):";
             this.numRentMonthly.Location = new System.Drawing.Point(550, 82);
             this.numRentMonthly.Maximum = 50000;
             this.numRentMonthly.Value = 5000;
-
+            
             this.lblLocationType.Location = new System.Drawing.Point(420, 120);
             this.lblLocationType.Text = "Type de localisation:";
             this.cmbLocationType.Location = new System.Drawing.Point(550, 117);
             this.cmbLocationType.Items.AddRange(new object[] { "urban", "suburban", "rural" });
-
+            
             this.lblUtilities.Location = new System.Drawing.Point(420, 155);
             this.lblUtilities.Text = "Utilities (CAD$):";
             this.numUtilities.Location = new System.Drawing.Point(550, 152);
@@ -180,7 +182,7 @@
             this.numEquipmentValue.Location = new System.Drawing.Point(550, 187);
             this.numEquipmentValue.Maximum = 5000000;
             this.numEquipmentValue.Value = 50000;
-
+            
             this.lblEquipmentCondition.Location = new System.Drawing.Point(420, 225);
             this.lblEquipmentCondition.Text = "Condition (%):";
             this.trkEquipmentCondition.Location = new System.Drawing.Point(550, 222);
@@ -188,11 +190,11 @@
             this.trkEquipmentCondition.Value = 80;
             this.trkEquipmentCondition.Size = new System.Drawing.Size(150, 45);
             this.trkEquipmentCondition.Scroll += new System.EventHandler(this.trkEquipmentCondition_Scroll);
-
+            
             this.lblConditionValue.Location = new System.Drawing.Point(710, 225);
             this.lblConditionValue.Text = "80%";
             this.lblConditionValue.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
-
+            
             this.lblEquipmentAge.Location = new System.Drawing.Point(420, 275);
             this.lblEquipmentAge.Text = "Âge équipement (ans):";
             this.numEquipmentAge.Location = new System.Drawing.Point(550, 272);
@@ -217,12 +219,12 @@
             this.btnCalculate.ForeColor = System.Drawing.Color.White;
             this.btnCalculate.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.btnCalculate.Click += new System.EventHandler(this.btnCalculate_Click);
-
+            
             this.btnReset.Location = new System.Drawing.Point(580, 370);
             this.btnReset.Size = new System.Drawing.Size(90, 40);
             this.btnReset.Text = "Réinitialiser";
             this.btnReset.Click += new System.EventHandler(this.btnReset_Click);
-
+            
             this.btnSave.Location = new System.Drawing.Point(680, 370);
             this.btnSave.Size = new System.Drawing.Size(90, 40);
             this.btnSave.Text = "Sauvegarder";
