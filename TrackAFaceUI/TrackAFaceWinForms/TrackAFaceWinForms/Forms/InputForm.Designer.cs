@@ -1,4 +1,4 @@
-﻿namespace TrackAFaceWinForms.Forms
+namespace TrackAFaceWinForms.Forms
 {
     partial class InputForm
     {
@@ -226,6 +226,7 @@
             this.btnSave.Location = new System.Drawing.Point(680, 370);
             this.btnSave.Size = new System.Drawing.Size(90, 40);
             this.btnSave.Text = "Sauvegarder";
+            this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
             // 
             // InputForm
             // 

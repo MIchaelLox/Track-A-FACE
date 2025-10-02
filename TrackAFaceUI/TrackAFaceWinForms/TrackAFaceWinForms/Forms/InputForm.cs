@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using TrackAFaceWinForms.Helpers;
 using TrackAFaceWinForms.Models;
 using TrackAFaceWinForms.Services;
+using TrackAFaceWinForms.Session;
 
 namespace TrackAFaceWinForms.Forms
 {
@@ -108,6 +109,133 @@ namespace TrackAFaceWinForms.Forms
                 btnCalculate.Text = "Calculer";
                 this.Cursor = Cursors.Default;
             }
+        }
+
+        // ⭐ MÉTHODE REQUISE PAR DESIGNER
+        private void btnSave_Click(object sender, EventArgs e)
+        {
+            var inputs = GetInputData();
+
+            // Validation avant sauvegarde
+            if (!ValidationHelper.ValidateInputs(inputs, out string error))
+            {
+                MessageBox.Show(
+                    $"Impossible de sauvegarder une session invalide:\n\n{error}",
+                    "Validation échouée",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
+            }
+
+            try
+            {
+                var sessionManager = new SessionManager();
+                string filePath = sessionManager.SaveSession(inputs);
+
+                MessageBox.Show(
+                    $"Session sauvegardée avec succès!\n\nFichier: {System.IO.Path.GetFileName(filePath)}",
+                    "Sauvegarde réussie",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Erreur lors de la sauvegarde:\n\n{ex.Message}",
+                    "Erreur",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+        }
+
+        /// <summary>
+        /// Charge une session depuis un fichier
+        /// </summary>
+        public void LoadSession()
+        {
+            var openDialog = new OpenFileDialog
+            {
+                Title = "Charger une session",
+                Filter = "Fichiers JSON (*.json)|*.json|Tous les fichiers (*.*)|*.*",
+                InitialDirectory = ConfigurationHelper.SessionsDirectory
+            };
+
+            if (openDialog.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    var sessionManager = new SessionManager();
+                    var inputs = sessionManager.LoadSession(openDialog.FileName);
+
+                    // Charger les données dans le formulaire
+                    LoadInputsToForm(inputs);
+
+                    MessageBox.Show(
+                        $"Session '{inputs.SessionName}' chargée avec succès!",
+                        "Chargement réussi",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Erreur lors du chargement:\n\n{ex.Message}",
+                        "Erreur",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Charge les données du modèle dans le formulaire
+        /// </summary>
+        private void LoadInputsToForm(RestaurantInputModel inputs)
+        {
+            txtSessionName.Text = inputs.SessionName;
+
+            // Theme
+            int themeIndex = cmbTheme.Items.IndexOf(inputs.Theme);
+            if (themeIndex >= 0)
+                cmbTheme.SelectedIndex = themeIndex;
+
+            // Revenue size
+            switch (inputs.RevenueSize.ToLower())
+            {
+                case "small": rbSmall.Checked = true; break;
+                case "medium": rbMedium.Checked = true; break;
+                case "large": rbLarge.Checked = true; break;
+                case "enterprise": rbEnterprise.Checked = true; break;
+            }
+
+            // Personnel
+            numStaffCount.Value = (decimal)inputs.StaffCount;
+            numRetrainingHours.Value = (decimal)inputs.RetrainingNeedHours;
+
+            // Immobilier
+            numKitchenSize.Value = (decimal)inputs.KitchenSizeSqm;
+            numRentMonthly.Value = (decimal)inputs.RentMonthly;
+
+            int locationIndex = cmbLocationType.Items.IndexOf(inputs.LocationType);
+            if (locationIndex >= 0)
+                cmbLocationType.SelectedIndex = locationIndex;
+
+            numUtilities.Value = (decimal)inputs.UtilityCostMonthly;
+
+            // Équipement
+            numEquipmentValue.Value = (decimal)inputs.EquipmentValue;
+            trkEquipmentCondition.Value = (int)(inputs.EquipmentCondition * 100);
+            numEquipmentAge.Value = inputs.EquipmentAgeYears;
+
+            // Opérationnel
+            numCapacity.Value = (decimal)inputs.OperationalCapacity;
+
+            UpdateConditionLabel();
         }
 
         // Méthode pour récupérer les données du formulaire
