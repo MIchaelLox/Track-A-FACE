@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +25,7 @@ namespace TrackAFaceWinForms.Models
         /// Thème du restaurant
         /// Valeurs possibles: fast_food, casual_dining, fine_dining, cloud_kitchen, food_truck
         /// </summary>
-        [JsonProperty("theme")]
+        [JsonProperty("restaurant_theme")]
         public string Theme { get; set; }
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace TrackAFaceWinForms.Models
         /// <summary>
         /// Heures de formation nécessaires (0-200)
         /// </summary>
-        [JsonProperty("retraining_need_hours")]
+        [JsonProperty("training_hours_needed")]
         public int RetrainingNeedHours { get; set; }
 
         #endregion
@@ -93,7 +93,7 @@ namespace TrackAFaceWinForms.Models
         /// <summary>
         /// Condition de l'équipement (0.0-1.0, où 1.0 = excellent)
         /// </summary>
-        [JsonProperty("equipment_condition")]
+        [JsonIgnore]
         public double EquipmentCondition { get; set; }
 
         /// <summary>
@@ -109,8 +109,45 @@ namespace TrackAFaceWinForms.Models
         /// <summary>
         /// Capacité opérationnelle (nombre de couverts/jour) (10-500)
         /// </summary>
-        [JsonProperty("operational_capacity")]
+        [JsonProperty("daily_capacity")]
         public int OperationalCapacity { get; set; }
+
+        #endregion
+
+        #region Champs Calculés Automatiquement
+
+        /// <summary>
+        /// Nombre de postes de travail dans la cuisine (calculé automatiquement)
+        /// </summary>
+        [JsonProperty("kitchen_workstations")]
+        public int KitchenWorkstations => Math.Max(2, (int)(KitchenSizeSqm / 12.5));
+
+        /// <summary>
+        /// Niveau d'expérience du personnel (par défaut: intermediate)
+        /// </summary>
+        [JsonProperty("staff_experience_level")]
+        public string StaffExperienceLevel => "intermediate";
+
+        /// <summary>
+        /// Loyer par m² (calculé depuis RentMonthly et KitchenSizeSqm)
+        /// </summary>
+        [JsonProperty("location_rent_sqm")]
+        public double LocationRentSqm => KitchenSizeSqm > 0 ? RentMonthly / KitchenSizeSqm : 0;
+
+        /// <summary>
+        /// Condition de l'équipement au format string pour Python
+        /// </summary>
+        [JsonProperty("equipment_condition")]
+        public string EquipmentConditionString
+        {
+            get
+            {
+                if (EquipmentCondition >= 0.9) return "excellent";
+                if (EquipmentCondition >= 0.7) return "good";
+                if (EquipmentCondition >= 0.5) return "fair";
+                return "poor";
+            }
+        }
 
         #endregion
 
