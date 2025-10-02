@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using TrackAFaceWinForms.Services;
 
 namespace TrackAFaceWinForms
 {
@@ -15,6 +16,8 @@ namespace TrackAFaceWinForms
         public MainForm()
         {
             InitializeComponent();
+            var bridge = new TrackAFaceWinForms.Services.PythonBridge();
+            MessageBox.Show(bridge.GetDiagnostic(), "Configuration Track-A-FACE");
         }
     }
 }
