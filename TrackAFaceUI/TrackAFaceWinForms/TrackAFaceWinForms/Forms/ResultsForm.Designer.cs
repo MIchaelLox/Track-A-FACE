@@ -175,6 +175,7 @@ namespace TrackAFaceWinForms.Forms
             this.btnExportPdf.TabIndex = 10;
             this.btnExportPdf.Text = "Export PDF";
             this.btnExportPdf.UseVisualStyleBackColor = true;
+            this.btnExportPdf.Click += new System.EventHandler(this.btnExportPdf_Click);
             // 
             // btnNewAnalysis
             // 

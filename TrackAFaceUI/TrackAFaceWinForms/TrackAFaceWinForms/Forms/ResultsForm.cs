@@ -219,6 +219,68 @@ namespace TrackAFaceWinForms.Forms
         }
 
         /// <summary>
+        /// Bouton Export PDF - Exporte les résultats vers un fichier PDF
+        /// </summary>
+        private void btnExportPdf_Click(object sender, EventArgs e)
+        {
+            if (_results == null)
+            {
+                MessageBox.Show(
+                    "Aucun résultat à exporter.",
+                    "Export impossible",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
+            }
+
+            try
+            {
+                // Générer un nom de fichier par défaut
+                string defaultFileName = ExportHelper.GenerateSafeFileName(_results.SessionName, "pdf");
+                string defaultDirectory = ExportHelper.GetDefaultExportDirectory();
+
+                // Dialogue de sauvegarde
+                var saveDialog = new SaveFileDialog
+                {
+                    Title = "Exporter les résultats en PDF",
+                    Filter = "Fichiers PDF (*.pdf)|*.pdf|Tous les fichiers (*.*)|*.*",
+                    FileName = defaultFileName,
+                    InitialDirectory = defaultDirectory,
+                    DefaultExt = "pdf"
+                };
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Exporter vers PDF
+                    ExportHelper.ExportToPdf(_results, saveDialog.FileName);
+
+                    // Demander si l'utilisateur veut ouvrir le fichier
+                    var openResult = MessageBox.Show(
+                        $"Export PDF réussi!\n\nFichier: {Path.GetFileName(saveDialog.FileName)}\n\nVoulez-vous ouvrir le fichier?",
+                        "Export réussi",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Information
+                    );
+
+                    if (openResult == DialogResult.Yes)
+                    {
+                        System.Diagnostics.Process.Start(saveDialog.FileName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Erreur lors de l'export PDF:\n\n{ex.Message}",
+                    "Erreur d'export",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+        }
+
+        /// <summary>
         /// Bouton Nouvelle Analyse - Ferme le formulaire
         /// </summary>
         private void btnNewAnalysis_Click(object sender, EventArgs e)
