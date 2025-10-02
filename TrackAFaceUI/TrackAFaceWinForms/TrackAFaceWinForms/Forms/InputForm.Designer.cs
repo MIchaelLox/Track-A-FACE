@@ -227,6 +227,15 @@ namespace TrackAFaceWinForms.Forms
             this.btnSave.Size = new System.Drawing.Size(90, 40);
             this.btnSave.Text = "Sauvegarder";
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
+
+            this.btnLoad = new System.Windows.Forms.Button();
+            this.btnLoad.Location = new System.Drawing.Point(780, 370);
+            this.btnLoad.Size = new System.Drawing.Size(90, 40);
+            this.btnLoad.Text = "Charger";
+            this.btnLoad.BackColor = System.Drawing.Color.FromArgb(33, 150, 243);
+            this.btnLoad.ForeColor = System.Drawing.Color.White;
+            this.btnLoad.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold);
+            this.btnLoad.Click += new System.EventHandler(this.btnLoad_Click);
             // 
             // InputForm
             // 
@@ -263,6 +272,7 @@ namespace TrackAFaceWinForms.Forms
             this.Controls.Add(this.btnCalculate);
             this.Controls.Add(this.btnReset);
             this.Controls.Add(this.btnSave);
+            this.Controls.Add(this.btnLoad);
             this.Name = "InputForm";
             this.Text = "Saisie - Track-A-FACE";
             this.grpRevenue.ResumeLayout(false);
@@ -315,5 +325,6 @@ namespace TrackAFaceWinForms.Forms
         private System.Windows.Forms.Button btnCalculate;
         private System.Windows.Forms.Button btnReset;
         private System.Windows.Forms.Button btnSave;
+        private System.Windows.Forms.Button btnLoad;
     }
 }
