@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35222.181
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrackAFaceWinForms", "TrackAFaceWinForms\TrackAFaceWinForms.csproj", "{7786A5B9-CE18-4962-AED7-08A3F5F4F0CE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7786A5B9-CE18-4962-AED7-08A3F5F4F0CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7786A5B9-CE18-4962-AED7-08A3F5F4F0CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7786A5B9-CE18-4962-AED7-08A3F5F4F0CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7786A5B9-CE18-4962-AED7-08A3F5F4F0CE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C9E9AAD2-179B-4BEA-903B-C51042F8072F}
+	EndGlobalSection
+EndGlobal
