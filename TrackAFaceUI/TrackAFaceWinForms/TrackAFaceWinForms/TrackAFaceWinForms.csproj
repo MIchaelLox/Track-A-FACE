@@ -86,6 +86,15 @@
     <Compile Include="Forms\ResultsForm.Designer.cs">
       <DependentUpon>ResultsForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Dialogs\AboutDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Dialogs\LoadSessionDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Dialogs\ProgressDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Helpers\ConfigurationHelper.cs" />
     <Compile Include="Helpers\ExportHelper.cs" />
     <Compile Include="Helpers\FormattingHelper.cs" />

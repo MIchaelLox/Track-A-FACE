@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using TrackAFaceWinForms.Dialogs;
 using TrackAFaceWinForms.Helpers;
 using TrackAFaceWinForms.Models;
 using TrackAFaceWinForms.Services;
@@ -151,8 +152,66 @@ namespace TrackAFaceWinForms.Forms
             }
         }
 
+        // ⭐ MÉTHODE REQUISE PAR DESIGNER
+        private void btnLoad_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (var dialog = new LoadSessionDialog())
+                {
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        if (!string.IsNullOrEmpty(dialog.SelectedSessionPath))
+                        {
+                            LoadSessionFromFile(dialog.SelectedSessionPath);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Erreur lors de l'ouverture du dialogue:\n\n{ex.Message}",
+                    "Erreur",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+        }
+
         /// <summary>
-        /// Charge une session depuis un fichier
+        /// Charge une session depuis un fichier spécifique
+        /// </summary>
+        private void LoadSessionFromFile(string filePath)
+        {
+            try
+            {
+                var sessionManager = new SessionManager();
+                var inputs = sessionManager.LoadSession(filePath);
+
+                // Charger les données dans le formulaire
+                LoadInputsToForm(inputs);
+
+                MessageBox.Show(
+                    $"Session '{inputs.SessionName}' chargée avec succès!",
+                    "Chargement réussi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Erreur lors du chargement:\n\n{ex.Message}",
+                    "Erreur",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+        }
+
+        /// <summary>
+        /// Charge une session depuis un fichier (ancienne méthode, conservée pour compatibilité)
         /// </summary>
         public void LoadSession()
         {
@@ -165,30 +224,7 @@ namespace TrackAFaceWinForms.Forms
 
             if (openDialog.ShowDialog() == DialogResult.OK)
             {
-                try
-                {
-                    var sessionManager = new SessionManager();
-                    var inputs = sessionManager.LoadSession(openDialog.FileName);
-
-                    // Charger les données dans le formulaire
-                    LoadInputsToForm(inputs);
-
-                    MessageBox.Show(
-                        $"Session '{inputs.SessionName}' chargée avec succès!",
-                        "Chargement réussi",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
-                    );
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(
-                        $"Erreur lors du chargement:\n\n{ex.Message}",
-                        "Erreur",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error
-                    );
-                }
+                LoadSessionFromFile(openDialog.FileName);
             }
         }
 
