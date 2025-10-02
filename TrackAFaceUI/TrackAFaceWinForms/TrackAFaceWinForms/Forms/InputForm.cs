@@ -21,6 +21,45 @@ namespace TrackAFaceWinForms.Forms
         {
             InitializeComponent();
             InitializeDefaults();
+            
+            // Activer la capture des touches
+            this.KeyPreview = true;
+        }
+
+        /// <summary>
+        /// Gestion des raccourcis clavier
+        /// </summary>
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            // Ctrl+S = Sauvegarder
+            if (keyData == (Keys.Control | Keys.S))
+            {
+                btnSave_Click(this, EventArgs.Empty);
+                return true;
+            }
+
+            // Ctrl+O = Charger Session
+            if (keyData == (Keys.Control | Keys.O))
+            {
+                btnLoad_Click(this, EventArgs.Empty);
+                return true;
+            }
+
+            // F5 = Calculer
+            if (keyData == Keys.F5)
+            {
+                btnCalculate_Click(this, EventArgs.Empty);
+                return true;
+            }
+
+            // Ctrl+R = Réinitialiser
+            if (keyData == (Keys.Control | Keys.R))
+            {
+                btnReset_Click(this, EventArgs.Empty);
+                return true;
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         private void InitializeDefaults()
@@ -66,7 +105,7 @@ namespace TrackAFaceWinForms.Forms
         }
 
         // ⭐ MÉTHODE REQUISE PAR DESIGNER
-        // ✅ APRÈS (avec async)
+        // ✅ APRÈS (avec async + ProgressDialog)
         private async void btnCalculate_Click(object sender, EventArgs e)
         {
             var inputs = GetInputData();
@@ -80,14 +119,35 @@ namespace TrackAFaceWinForms.Forms
 
             // Désactiver le bouton pendant le calcul
             btnCalculate.Enabled = false;
-            btnCalculate.Text = "Calcul en cours...";
-            this.Cursor = Cursors.WaitCursor;
 
+            // Créer et afficher le dialogue de progression
+            ProgressDialog progressDialog = null;
             try
             {
+                progressDialog = new ProgressDialog();
+                progressDialog.UpdateMessage("Calcul des coûts en cours...");
+                progressDialog.UpdateStatus("Préparation des données...");
+                progressDialog.Show(this);
+                
+                // Forcer l'affichage du dialogue
+                Application.DoEvents();
+
+                // Mettre à jour le statut
+                progressDialog.UpdateStatus("Communication avec le moteur Python...");
+                Application.DoEvents();
+
                 // Appeler Python via PythonBridge
                 var bridge = new PythonBridge();
                 var results = await bridge.CalculateAsync(inputs);
+
+                // Mettre à jour le statut
+                progressDialog.UpdateStatus("Traitement des résultats...");
+                Application.DoEvents();
+
+                // Fermer le dialogue de progression
+                progressDialog.Close();
+                progressDialog.Dispose();
+                progressDialog = null;
 
                 // Afficher les résultats
                 var resultsForm = new ResultsForm();
@@ -96,6 +156,13 @@ namespace TrackAFaceWinForms.Forms
             }
             catch (Exception ex)
             {
+                // Fermer le dialogue de progression en cas d'erreur
+                if (progressDialog != null)
+                {
+                    progressDialog.Close();
+                    progressDialog.Dispose();
+                }
+
                 MessageBox.Show(
                     $"Erreur lors du calcul:\n\n{ex.Message}",
                     "Erreur",
@@ -105,10 +172,15 @@ namespace TrackAFaceWinForms.Forms
             }
             finally
             {
+                // S'assurer que le dialogue est fermé
+                if (progressDialog != null && !progressDialog.IsDisposed)
+                {
+                    progressDialog.Close();
+                    progressDialog.Dispose();
+                }
+
                 // Réactiver le bouton
                 btnCalculate.Enabled = true;
-                btnCalculate.Text = "Calculer";
-                this.Cursor = Cursors.Default;
             }
         }
 
