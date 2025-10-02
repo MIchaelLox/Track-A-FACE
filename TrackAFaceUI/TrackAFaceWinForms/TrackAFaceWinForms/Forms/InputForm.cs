@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using TrackAFaceWinForms.Helpers;
 using TrackAFaceWinForms.Models;
+using TrackAFaceWinForms.Services;
 
 namespace TrackAFaceWinForms.Forms
 {
@@ -63,19 +64,50 @@ namespace TrackAFaceWinForms.Forms
         }
 
         // ⭐ MÉTHODE REQUISE PAR DESIGNER
-        private void btnCalculate_Click(object sender, EventArgs e)
+        // ✅ APRÈS (avec async)
+        private async void btnCalculate_Click(object sender, EventArgs e)
         {
             var inputs = GetInputData();
 
+            // Validation
             if (!ValidationHelper.ValidateInputs(inputs, out string error))
             {
                 ValidationHelper.ShowValidationError(error);
                 return;
             }
 
-            MessageBox.Show("Validation réussie!",
-                "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            
+            // Désactiver le bouton pendant le calcul
+            btnCalculate.Enabled = false;
+            btnCalculate.Text = "Calcul en cours...";
+            this.Cursor = Cursors.WaitCursor;
+
+            try
+            {
+                // Appeler Python via PythonBridge
+                var bridge = new PythonBridge();
+                var results = await bridge.CalculateAsync(inputs);
+
+                // Afficher les résultats
+                var resultsForm = new ResultsForm();
+                resultsForm.DisplayResults(results);
+                resultsForm.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Erreur lors du calcul:\n\n{ex.Message}",
+                    "Erreur",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+            finally
+            {
+                // Réactiver le bouton
+                btnCalculate.Enabled = true;
+                btnCalculate.Text = "Calculer";
+                this.Cursor = Cursors.Default;
+            }
         }
 
         // Méthode pour récupérer les données du formulaire

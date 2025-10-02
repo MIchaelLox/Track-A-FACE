@@ -81,11 +81,14 @@
       <DependentUpon>ResultsForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Helpers\ConfigurationHelper.cs" />
+    <Compile Include="Helpers\FormattingHelper.cs" />
     <Compile Include="Helpers\ValidationHelper.cs" />
     <Compile Include="Models\CalculationResultModel.cs" />
     <Compile Include="Models\RestaurantInputModel.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\PythonBridge.cs" />
+    <Compile Include="Styles\ColorScheme.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -112,9 +115,7 @@
   <ItemGroup>
     <Folder Include="Controls\" />
     <Folder Include="Dialogs\" />
-    <Folder Include="Services\" />
     <Folder Include="Session\" />
-    <Folder Include="Styles\" />
     <Folder Include="Testing\" />
     <Folder Include="Workflow\" />
   </ItemGroup>

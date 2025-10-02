@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,7 +16,12 @@ namespace TrackAFaceWinForms
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+            
+            // Lancer directement InputForm pour tester l'application
+            Application.Run(new Forms.InputForm());
+            
+            // Pour production, utiliser MainForm avec menu:
+            // Application.Run(new MainForm());
         }
     }
 }
