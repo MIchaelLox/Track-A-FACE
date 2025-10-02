@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -280,10 +281,10 @@ Validation: {(ValidationPassed ? "Réussie" : "Échouée")}";
         public string Formula { get; set; }
 
         /// <summary>
-        /// Détails supplémentaires du calcul (objet JSON ou string)
+        /// Détails supplémentaires du calcul (accepte tout type JSON)
         /// </summary>
         [JsonProperty("details")]
-        public object DetailsRaw { get; set; }
+        public JToken DetailsRaw { get; set; }
 
         /// <summary>
         /// Détails formatés en string pour l'affichage
@@ -294,10 +295,19 @@ Validation: {(ValidationPassed ? "Réussie" : "Échouée")}";
             get
             {
                 if (DetailsRaw == null) return string.Empty;
-                if (DetailsRaw is string str) return str;
-                return JsonConvert.SerializeObject(DetailsRaw);
+                
+                // Si c'est une string simple
+                if (DetailsRaw.Type == JTokenType.String)
+                    return DetailsRaw.ToString();
+                
+                // Si c'est un objet ou array, formater joliment
+                return DetailsRaw.ToString(Formatting.None);
             }
-            set { DetailsRaw = value; }
+            set 
+            { 
+                if (value != null)
+                    DetailsRaw = JToken.Parse($"\"{value}\""); 
+            }
         }
 
         /// <summary>
@@ -308,7 +318,7 @@ Validation: {(ValidationPassed ? "Réussie" : "Échouée")}";
             Category = string.Empty;
             Subcategory = string.Empty;
             Formula = string.Empty;
-            Details = string.Empty;
+            DetailsRaw = null;
         }
 
         /// <summary>
