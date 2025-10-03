@@ -59,6 +59,13 @@ namespace TrackAFaceWinForms.Forms
                 return true;
             }
 
+            // Escape = Fermer
+            if (keyData == Keys.Escape)
+            {
+                btnClose_Click(this, EventArgs.Empty);
+                return true;
+            }
+
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
@@ -102,6 +109,29 @@ namespace TrackAFaceWinForms.Forms
         {
             txtSessionName.Clear();
             InitializeDefaults();
+        }
+
+        // ⭐ MÉTHODE REQUISE PAR DESIGNER
+        private void btnClose_Click(object sender, EventArgs e)
+        {
+            // Demander confirmation si des données ont été saisies
+            var sessionName = txtSessionName.Text.Trim();
+            if (!string.IsNullOrEmpty(sessionName))
+            {
+                var result = MessageBox.Show(
+                    "Voulez-vous fermer le formulaire sans sauvegarder?",
+                    "Confirmer la fermeture",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                );
+
+                if (result == DialogResult.No)
+                {
+                    return; // Ne pas fermer
+                }
+            }
+
+            this.Close();
         }
 
         // ⭐ MÉTHODE REQUISE PAR DESIGNER

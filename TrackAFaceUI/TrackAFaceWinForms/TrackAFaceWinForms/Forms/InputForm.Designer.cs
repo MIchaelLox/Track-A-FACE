@@ -236,12 +236,21 @@ namespace TrackAFaceWinForms.Forms
             this.btnLoad.ForeColor = System.Drawing.Color.White;
             this.btnLoad.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold);
             this.btnLoad.Click += new System.EventHandler(this.btnLoad_Click);
+
+            this.btnClose = new System.Windows.Forms.Button();
+            this.btnClose.Location = new System.Drawing.Point(880, 370);
+            this.btnClose.Size = new System.Drawing.Size(90, 40);
+            this.btnClose.Text = "Fermer";
+            this.btnClose.BackColor = System.Drawing.Color.FromArgb(158, 158, 158);
+            this.btnClose.ForeColor = System.Drawing.Color.White;
+            this.btnClose.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold);
+            this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
             // 
             // InputForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.ClientSize = new System.Drawing.Size(1000, 450);
             this.Controls.Add(this.lblTitle);
             this.Controls.Add(this.lblSessionName);
             this.Controls.Add(this.txtSessionName);
@@ -273,6 +282,7 @@ namespace TrackAFaceWinForms.Forms
             this.Controls.Add(this.btnReset);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.btnLoad);
+            this.Controls.Add(this.btnClose);
             this.Name = "InputForm";
             this.Text = "Saisie - Track-A-FACE";
             this.grpRevenue.ResumeLayout(false);
@@ -326,5 +336,6 @@ namespace TrackAFaceWinForms.Forms
         private System.Windows.Forms.Button btnReset;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Button btnLoad;
+        private System.Windows.Forms.Button btnClose;
     }
 }
