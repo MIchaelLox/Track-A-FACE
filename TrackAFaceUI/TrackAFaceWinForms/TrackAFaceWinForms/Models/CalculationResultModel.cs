@@ -193,7 +193,28 @@ namespace TrackAFaceWinForms.Models
         /// <summary>
         /// Récupère les breakdowns opérationnels
         /// </summary>
-        public List<CostBreakdownItem> GetOperationalBreakdowns() => GetBreakdownsByCategory("Operational");
+        public List<CostBreakdownItem> GetOperationalBreakdowns()
+        {
+            var items = GetBreakdownsByCategory("Operational");
+            
+            // Si vide et qu'il y a un coût opérationnel total, créer un item générique
+            if ((items == null || items.Count == 0) && OperationalCosts > 0)
+            {
+                items = new List<CostBreakdownItem>
+                {
+                    new CostBreakdownItem
+                    {
+                        Category = "Operational",
+                        Subcategory = "couts_operationnels_totaux",
+                        Amount = OperationalCosts,
+                        Formula = $"{OperationalCosts:N2}",
+                        Details = "Coûts opérationnels calculés par le moteur Python"
+                    }
+                };
+            }
+            
+            return items ?? new List<CostBreakdownItem>();
+        }
 
         #endregion
 
