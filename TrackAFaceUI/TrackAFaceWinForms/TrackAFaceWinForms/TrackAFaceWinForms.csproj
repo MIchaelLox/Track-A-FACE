@@ -107,6 +107,9 @@
     <Compile Include="Session\SessionManager.cs" />
     <Compile Include="Session\SessionMetadata.cs" />
     <Compile Include="Styles\ColorScheme.cs" />
+    <EmbeddedResource Include="Forms\InputForm.resx">
+      <DependentUpon>InputForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
