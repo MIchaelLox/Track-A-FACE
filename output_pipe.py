@@ -18,7 +18,14 @@ from typing import Iterable, Mapping, Any, Sequence
 
 
 class OutputPipe:
-    """Export minimal des résultats pour scripts Python."""
+    """
+    Minimal result export helper for Python scripts/CLI.
+
+    NOTE:
+    - WinForms UI handles rich CSV/PDF export.
+    - This class is intentionally simple and is mainly used in tests
+      and standalone Python workflows.
+    """
 
     def __init__(self, export_dir: Path | str = "exports") -> None:
         self.export_dir = Path(export_dir)
