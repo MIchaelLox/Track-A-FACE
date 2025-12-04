@@ -563,26 +563,83 @@ class DatabaseInitializer:
         
         self.db_manager.connection.commit()
         print(f"📊 {len(all_factors)} facteurs de coût avancés insérés")
-    
+
     def _insert_sample_data(self):
-        """Insère des données d'exemple pour les tests"""
-        sample_inputs = [
-            ('Restaurant Test 1', 'casual_dining', 'medium', 8, 40, 120, 85.0, 150000, 'good', 3, 45.0),
-            ('Fast Food Test', 'fast_food', 'small', 5, 20, 200, 60.0, 80000, 'fair', 2, 35.0),
-            ('Fine Dining Test', 'fine_dining', 'large', 15, 80, 80, 120.0, 300000, 'excellent', 1, 85.0),
-        ]
-        
-        insert_query = """
-        INSERT OR REPLACE INTO inputs 
-        (session_name, restaurant_theme, revenue_size, staff_count, training_hours_needed, 
-         daily_capacity, kitchen_size_sqm, equipment_value, equipment_condition, 
-         equipment_age_years, location_rent_sqm)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """Insert sample input sessions for quick tests and demos.
+
+        Note: inputs.kitchen_workstations and staff_experience_level are NOT NULL in the current schema,
+        so sample data must provide values for these columns to avoid NOT NULL constraint errors.
         """
         
+        sample_inputs = [
+            (
+                'Restaurant Test 1',  # session_name
+                'casual_dining',  # restaurant_theme
+                'medium',  # revenue_size
+                85.0,  # kitchen_size_sqm
+                8,  # kitchen_workstations
+                120,  # daily_capacity
+                10,  # staff_count
+                'intermediate',  # staff_experience_level
+                40,  # training_hours_needed
+                3,  # equipment_age_years
+                'good',  # equipment_condition
+                150000.0,  # equipment_value
+                45.0  # location_rent_sqm
+            ),
+            (
+                'Fast Food Test',
+                'fast_food',
+                'small',
+                60.0,
+                5,
+                200,
+                7,
+                'beginner',
+                20,
+                2,
+                'fair',
+                80000.0,
+                35.0
+            ),
+            (
+                'Fine Dining Test',
+                'fine_dining',
+                'large',
+                120.0,
+                10,
+                80,
+                20,
+                'experienced',
+                80,
+                1,
+                'excellent',
+                300000.0,
+                85.0
+            ),
+        ]
+
+        insert_query = """
+        INSERT OR REPLACE INTO inputs (
+            session_name,
+            restaurant_theme,
+            revenue_size,
+            kitchen_size_sqm,
+            kitchen_workstations,
+            daily_capacity,
+            staff_count,
+            staff_experience_level,
+            training_hours_needed,
+            equipment_age_years,
+            equipment_condition,
+            equipment_value,
+            location_rent_sqm
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
         for sample in sample_inputs:
             self.db_manager.connection.execute(insert_query, sample)
-        
+
         self.db_manager.connection.commit()
         print(f"🧪 {len(sample_inputs)} sessions d'exemple insérées")
 
