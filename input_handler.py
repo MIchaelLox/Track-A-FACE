@@ -202,8 +202,13 @@ class InputValidator:
 
 
 class InputHandler:
-    """Gestionnaire principal des entrées utilisateur"""
-    
+    """
+    Gestionnaire principal des entrées utilisateur.
+
+    Centralise la collecte (dict → RestaurantInputs), la validation
+    et les validations croisées avant d'envoyer les données au moteur
+    de calcul Track-A-FACE.
+    """
     def __init__(self):
         self.validator = InputValidator()
         self.current_inputs = None

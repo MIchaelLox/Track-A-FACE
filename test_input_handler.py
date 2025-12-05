@@ -116,6 +116,34 @@ class TestInputValidator(unittest.TestCase):
             self.assertIsInstance(result, float)
             self.assertGreaterEqual(result, 0)
 
+    def test_validate_revenue_size_valid(self):
+        """Test validation taille de revenus valide"""
+        valid_sizes = ["small", "medium", "large", "enterprise"]
+        for size in valid_sizes:
+            result = self.validator.validate_revenue_size(size)
+            self.assertEqual(result, size)
+
+    def test_validate_revenue_size_invalid(self):
+        """Test validation taille de revenus invalide"""
+        invalid_sizes = ["", "invalid", "huge"]
+        for size in invalid_sizes:
+            with self.assertRaises(ValidationError):
+                self.validator.validate_revenue_size(size)
+
+    def test_validate_experience_level_valid(self):
+        """Test validation niveau d'expérience valide"""
+        valid_levels = ["beginner", "intermediate", "experienced", "expert"]
+        for level in valid_levels:
+            result = self.validator.validate_experience_level(level)
+            self.assertEqual(result, level)
+
+    def test_validate_experience_level_invalid(self):
+        """Test validation niveau d'expérience invalide"""
+        invalid_levels = ["", "junior", "senior"]
+        for level in invalid_levels:
+            with self.assertRaises(ValidationError):
+                self.validator.validate_experience_level(level)
+
 
 class TestInputHandler(unittest.TestCase):
     """Tests pour la classe InputHandler"""
