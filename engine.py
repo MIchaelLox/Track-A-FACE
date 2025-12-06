@@ -8,7 +8,7 @@ Coordonne les calculs de coûts et fournit une API unifiée
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 from pathlib import Path
 
@@ -39,35 +39,42 @@ class CalculationEngine:
         self._ensure_database_ready()
         
         logger.info("Moteur de calcul Track-A-FACE initialisé")
-    
+
     def _ensure_database_ready(self):
-        """S'assure que la base de données est initialisée"""
+        """Vérifie que la base est initialisée et contient les facteurs nécessaires"""
         try:
-            # Vérifier si la DB existe et est accessible
+            # Vérifier si la table cost_factors existe et contient des données
             self.db_manager.connect()
-            
-            # Tester une requête simple
             connection = self.db_manager.connection
             cursor = connection.cursor()
             cursor.execute("SELECT COUNT(*) FROM cost_factors")
             factor_count = cursor.fetchone()[0]
-            
+
             if factor_count == 0:
-                logger.warning("Base de données vide, initialisation...")
+                logger.warning("Base de données vide, initialisation.")
                 db_init = DatabaseInitializer()
                 db_init.db_manager = self.db_manager
                 db_init.initialize_database()
-            
-            self.db_manager.disconnect()
+
             logger.info(f"Base de données prête avec {factor_count} facteurs de coût")
-            
+
         except Exception as e:
             logger.error(f"Erreur d'initialisation de la base: {e}")
+
+            # Fermer proprement la connexion ouverte avant de réinitialiser
+            if self.db_manager.connection:
+                self.db_manager.disconnect()
+
             # Initialiser une nouvelle base
             db_init = DatabaseInitializer()
             db_init.db_manager = self.db_manager
             db_init.initialize_database()
-    
+
+        finally:
+            # S'assurer qu'aucune connexion ne reste ouverte
+            if self.db_manager.connection:
+                self.db_manager.disconnect()
+
     def calculate_restaurant_costs(self, inputs: RestaurantInputs) -> TotalCostSummary:
         """
         Calcule tous les coûts pour un restaurant
@@ -99,34 +106,43 @@ class CalculationEngine:
                 self.db_manager.disconnect()
             raise
     
-    def create_inputs_from_dict(self, data: Dict) -> RestaurantInputs:
+    def create_inputs_from_dict(self, data: Dict[str, Any]) -> RestaurantInputs:
         """
         Crée des entrées validées à partir d'un dictionnaire
-        
+
         Args:
             data: Dictionnaire avec les paramètres du restaurant
-            
+
         Returns:
             Objet RestaurantInputs validé
         """
-        return self.input_handler.create_inputs(**data)
-    
+        return self.input_handler.create_inputs_from_dict(data)
+
     def run_sample_calculation(self) -> TotalCostSummary:
         """
-        Exécute un calcul avec des données d'exemple
-        Utile pour les tests et démonstrations
-        
+        Exécute un calcul complet en utilisant un jeu de données d'exemple.
+
+        Cette méthode est un raccourci pratique pour les tests unitaires,
+        la démonstration du moteur et la documentation. Elle génère des
+        entrées factices via ``create_sample_inputs()`` (session
+        « Restaurant Test ») puis appelle la même pipeline que pour un
+        calcul réel via :meth:`calculate_restaurant_costs`.
+
+        Aucun identifiant de session n’est fourni, donc aucun résultat
+        n’est persisté en base ; seule la lecture des facteurs de coûts
+        est effectuée.
+
         Returns:
-            Résumé des coûts calculés
+            Résumé des coûts calculés pour le scénario d'exemple.
         """
         logger.info("Exécution d'un calcul d'exemple")
-        
+
         # Créer des entrées d'exemple
         sample_inputs = create_sample_inputs()
-        
+
         # Calculer
         return self.calculate_restaurant_costs(sample_inputs)
-    
+
     def batch_calculate(self, inputs_list: List[RestaurantInputs]) -> List[TotalCostSummary]:
         """
         Calcule les coûts pour plusieurs restaurants en lot

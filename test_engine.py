@@ -118,7 +118,7 @@ class TestCalculationEngine(unittest.TestCase):
         """Test de création d'entrées à partir d'un dictionnaire"""
         data = {
             'session_name': 'Test Dict',
-            'restaurant_theme': 'casual',
+            'restaurant_theme': 'casual_dining',
             'revenue_size': 'medium',
             'kitchen_size_sqm': 120,
             'kitchen_workstations': 5,
@@ -137,7 +137,7 @@ class TestCalculationEngine(unittest.TestCase):
         # Vérifications
         self.assertIsInstance(inputs, RestaurantInputs)
         self.assertEqual(inputs.session_name, 'Test Dict')
-        self.assertEqual(inputs.restaurant_theme, 'casual')
+        self.assertEqual(inputs.restaurant_theme, 'casual_dining')
         self.assertEqual(inputs.daily_capacity, 70)
     
     def test_batch_calculation(self):
@@ -147,7 +147,7 @@ class TestCalculationEngine(unittest.TestCase):
         for i in range(3):
             data = {
                 'session_name': f'Restaurant Batch {i+1}',
-                'restaurant_theme': 'casual',
+                'restaurant_theme': 'casual_dining',
                 'revenue_size': 'medium',
                 'kitchen_size_sqm': 100 + (i * 20),
                 'kitchen_workstations': 4 + i,
